@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blood Cell YOLO26 Monitor</title>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f4f3ef;--surface:#fcfcfb;--line:#e2e0d9;--grid:#ecebe6;
+  --text:#0b0b0b;--text-2:#52514e;--muted:#7a7972;
+  --s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;
+  --good:#1f8a4c;--warn:#b07400;--bad:#c93a3a;--run:#2a78d6;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;--bg:#121211;--surface:#1a1a19;--line:#2e2d2a;--grid:#262624;
+  --text:#f0efec;--text-2:#c3c2b7;--muted:#8e8d86;
+  --s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;
+  --good:#3fb877;--warn:#e0a63a;--bad:#e66767;--run:#3987e5;}}
+:root[data-theme="dark"]{
+  color-scheme:dark;--bg:#121211;--surface:#1a1a19;--line:#2e2d2a;--grid:#262624;
+  --text:#f0efec;--text-2:#c3c2b7;--muted:#8e8d86;
+  --s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;
+  --good:#3fb877;--warn:#e0a63a;--bad:#e66767;--run:#3987e5;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-size:14px}
+.wrap{max-width:1280px;margin:0 auto;padding-inline:20px;padding-block:24px 48px}
+header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;margin-bottom:20px}
+h1{font-size:26px;letter-spacing:-.02em;margin:4px 0 2px}
+h2{font-size:15px;margin:0 0 4px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.sub,.note{color:var(--text-2);font-size:13px;line-height:1.5}
+.meta{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+a{color:var(--s1)}
+button{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 12px;cursor:pointer}
+.badge{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:99px;padding:4px 10px;font-size:12px;font-weight:600;background:var(--surface)}
+.badge i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.badge.running i{background:var(--run);animation:pulse 1.4s infinite}.badge.complete i{background:var(--good)}.badge.error i{background:var(--bad)}.badge.queued i{background:var(--warn)}
+@keyframes pulse{50%{opacity:.3}}
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.c3{grid-column:span 3}.c4{grid-column:span 4}.c5{grid-column:span 5}.c6{grid-column:span 6}.c7{grid-column:span 7}.c8{grid-column:span 8}.c12{grid-column:span 12}
+@media(max-width:900px){.c3{grid-column:span 6}.c4,.c5,.c6,.c7,.c8{grid-column:span 12}}
+@media(max-width:520px){.c3{grid-column:span 12}}
+.kpi .label{font-size:12px;color:var(--text-2);font-weight:600}
+.kpi .value{font-size:30px;font-weight:700;letter-spacing:-.03em;margin:6px 0 2px;font-variant-numeric:tabular-nums}
+.kpi .detail{font-size:12px;color:var(--muted)}
+.section-title{grid-column:span 12;margin:18px 0 0;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.bar{height:8px;border-radius:8px;background:var(--grid);overflow:hidden;margin:12px 0 8px}
+.bar span{display:block;height:100%;width:0;background:var(--s1);border-radius:8px;transition:width .4s}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--text-2);margin:6px 0 4px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend .ln{width:14px;height:0;border-top:2px solid}.legend .ln.dash{border-top-style:dashed}
+.legend .sw{width:10px;height:10px;border-radius:2px}
+.chart{position:relative}
+svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{fill:var(--muted);font-size:11px;font-family:inherit}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.12);min-width:150px;z-index:2}
+.tip .h{color:var(--muted);margin-bottom:4px}
+.tip .r{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.tip .r b{font-variant-numeric:tabular-nums;color:var(--text)}
+.tip .r span{display:inline-flex;align-items:center;gap:6px;color:var(--text-2)}
+.tip .k{width:12px;border-top:2px solid}
+.empty{display:grid;place-items:center;min-height:180px;border:1px dashed var(--line);border-radius:10px;color:var(--muted);text-align:center;padding:20px;font-size:13px;line-height:1.5}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--text-2);font-weight:600;font-size:12px}
+.scroll{overflow-x:auto}
+img.fig{width:100%;border-radius:8px;border:1px solid var(--line);background:#fff}
+details summary{cursor:pointer;color:var(--text-2);font-size:13px;margin-top:10px}
+.err{color:var(--bad);font-size:12px;white-space:pre-wrap;margin-top:8px}
+.stack-row{display:grid;grid-template-columns:52px 1fr 64px;gap:10px;align-items:center;margin:10px 0;font-size:12px}
+.stack{display:flex;gap:2px;height:22px}
+.stack div{border-radius:3px;min-width:2px;position:relative}
+.stack div:hover{filter:brightness(1.12)}
+.right{text-align:right;color:var(--text-2);font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">Blood smear detection · YOLO26 fine-tune</div>
+      <h1>Training monitor</h1>
+      <div class="sub">TXL-PBC · WBC / RBC / Platelets · trained on Kaggle GPU</div>
+    </div>
+    <div class="meta">
+      <span class="badge" id="badge"><i></i><span id="badgeText">Loading…</span></span>
+      <a id="kaggleLink" href="#" target="_blank" rel="noopener">Kaggle run ↗</a>
+      <span id="updated">—</span>
+      <button id="refresh" type="button">Refresh</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="card kpi c3"><div class="label">Epoch</div><div class="value" id="kEpoch">—</div><div class="detail" id="kStage">—</div></div>
+    <div class="card kpi c3"><div class="label">Best val mAP50-95</div><div class="value" id="kBest">—</div><div class="detail" id="kBestDetail">—</div></div>
+    <div class="card kpi c3"><div class="label">Test mAP50</div><div class="value" id="kTest50">—</div><div class="detail">held-out test split</div></div>
+    <div class="card kpi c3"><div class="label">Test mAP50-95</div><div class="value" id="kTest">—</div><div class="detail" id="kTestDetail">held-out test split</div></div>
+
+    <div class="card c12">
+      <h2>Run progress</h2>
+      <div class="bar"><span id="progress"></span></div>
+      <div class="note" id="progressText">Waiting for the first epoch…</div>
+      <div class="err" id="errors"></div>
+    </div>
+
+    <div class="section-title">Training progress</div>
+    <div class="card c6"><h2>Loss</h2><div class="note">Training (solid) vs. validation (dashed), per epoch</div><div id="lossChart" class="chart"></div></div>
+    <div class="card c6"><h2>Validation metrics</h2><div class="note">Computed on the val split after each epoch</div><div id="metricChart" class="chart"></div></div>
+    <div class="card c12">
+      <details><summary>Epoch table</summary><div class="scroll"><table id="epochTable"></table></div></details>
+    </div>
+
+    <div class="section-title">Model performance (test split)</div>
+    <div class="card c5"><h2>Per-class results</h2><div class="note" id="perfNote">Available when the run finishes.</div><div class="scroll"><table id="classTable"></table></div><div id="classChart" class="chart"></div></div>
+    <div class="card c7"><h2>Predictions vs. ground truth</h2><div id="predFig" class="empty">Test predictions appear after evaluation.</div></div>
+    <div class="card c6"><h2>Confusion matrix (normalized)</h2><div id="cmFig" class="empty">—</div></div>
+    <div class="card c6"><h2>Precision–recall curve</h2><div id="prFig" class="empty">—</div></div>
+
+    <div class="section-title">Dataset</div>
+    <div class="card c5"><h2>Cells per split</h2><div class="note" id="dsNote"></div><div class="legend" id="dsLegend"></div><div id="dsStacks"></div><div class="scroll"><table id="dsTable"></table></div></div>
+    <div class="card c7"><h2>Sample training images</h2><div class="note">Ground-truth boxes: WBC, RBC, Platelets</div><div id="sampleFig" class="empty">—</div></div>
+  </div>
+</div>
+
+<script>
+const CLASSES = ["WBC", "RBC", "Platelets"];
+const CLASS_VAR = {WBC: "--s1", RBC: "--s2", Platelets: "--s3"};
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 3) => (v == null || isNaN(v)) ? "—" : Number(v).toFixed(d);
+const SVGNS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs = {}, parent) => {
+  const n = document.createElementNS(SVGNS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  if (parent) parent.appendChild(n);
+  return n;
+};
+let data = {};
+
+function lineChart(host, rows, series, opts = {}) {
+  host.replaceChildren();
+  if (!rows.length) {
+    const e = document.createElement("div"); e.className = "empty";
+    e.textContent = "No epochs reported yet. Curves appear as soon as training logs stream in.";
+    host.appendChild(e); return;
+  }
+  const legend = document.createElement("div"); legend.className = "legend";
+  for (const s of series) {
+    const sp = document.createElement("span"), k = document.createElement("i");
+    k.className = "ln" + (s.dash ? " dash" : ""); k.style.borderColor = css(s.color);
+    sp.append(k, document.createTextNode(s.label)); legend.appendChild(sp);
+  }
+  host.appendChild(legend);
+  const W = 560, H = 250, m = {l: 40, r: 12, t: 10, b: 26};
+  const xs = rows.map(r => r.epoch);
+  const vals = rows.flatMap(r => series.map(s => r[s.key])).filter(v => v != null && isFinite(v));
+  const ymin = opts.ymin ?? 0, ymax = opts.ymax ?? Math.max(...vals) * 1.08;
+  const x0 = Math.min(...xs), x1 = Math.max(Math.max(...xs), x0 + 1);
+  const X = v => m.l + (v - x0) / (x1 - x0) * (W - m.l - m.r);
+  const Y = v => H - m.b - (v - ymin) / (ymax - ymin) * (H - m.t - m.b);
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": opts.label || "chart"});
+  for (let i = 0; i <= 4; i++) {
+    const v = ymin + (ymax - ymin) * i / 4;
+    el("line", {x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: css("--grid")}, svg);
+    el("text", {x: m.l - 6, y: Y(v) + 4, "text-anchor": "end"}, svg).textContent = v.toFixed(2);
+  }
+  const step = Math.max(1, Math.ceil((x1 - x0) / 8));
+  for (let e = x0; e <= x1; e += step) el("text", {x: X(e), y: H - 8, "text-anchor": "middle"}, svg).textContent = e;
+  for (const s of series) {
+    const pts = rows.filter(r => r[s.key] != null).map(r => `${X(r.epoch).toFixed(1)},${Y(r[s.key]).toFixed(1)}`);
+    el("polyline", {points: pts.join(" "), fill: "none", stroke: css(s.color), "stroke-width": 2,
+      "stroke-dasharray": s.dash ? "5 4" : "", "stroke-linejoin": "round", "stroke-linecap": "round"}, svg);
+  }
+  const hair = el("line", {y1: m.t, y2: H - m.b, stroke: css("--muted"), "stroke-width": 1, visibility: "hidden"}, svg);
+  const dots = series.map(s => el("circle", {r: 4, fill: css(s.color), stroke: css("--surface"), "stroke-width": 2, visibility: "hidden"}, svg));
+  const hit = el("rect", {x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: "transparent", tabindex: 0}, svg);
+  const wrap = document.createElement("div"); wrap.style.position = "relative"; wrap.appendChild(svg);
+  const tip = document.createElement("div"); tip.className = "tip"; tip.hidden = true; wrap.appendChild(tip);
+  host.appendChild(wrap);
+  const show = idx => {
+    const r = rows[idx], px = X(r.epoch);
+    hair.setAttribute("x1", px); hair.setAttribute("x2", px); hair.setAttribute("visibility", "visible");
+    series.forEach((s, i) => { if (r[s.key] == null) return dots[i].setAttribute("visibility", "hidden");
+      dots[i].setAttribute("cx", px); dots[i].setAttribute("cy", Y(r[s.key])); dots[i].setAttribute("visibility", "visible"); });
+    tip.replaceChildren();
+    const h = document.createElement("div"); h.className = "h"; h.textContent = `Epoch ${r.epoch}`; tip.appendChild(h);
+    for (const s of series) {
+      const row = document.createElement("div"); row.className = "r";
+      const lab = document.createElement("span"), k = document.createElement("i"); k.className = "k";
+      k.style.borderColor = css(s.color); if (s.dash) k.style.borderTopStyle = "dashed";
+      lab.append(k, document.createTextNode(s.label));
+      const b = document.createElement("b"); b.textContent = fmt(r[s.key]);
+      row.append(lab, b); tip.appendChild(row);
+    }
+    tip.hidden = false;
+    const scale = svg.getBoundingClientRect().width / W, left = px * scale;
+    tip.style.top = "8px";
+    tip.style.left = (left > wrap.clientWidth / 2 ? left - tip.offsetWidth - 12 : left + 12) + "px";
+  };
+  const hide = () => { tip.hidden = true; hair.setAttribute("visibility", "hidden"); dots.forEach(d => d.setAttribute("visibility", "hidden")); };
+  let cur = rows.length - 1;
+  hit.addEventListener("pointermove", ev => {
+    const b = svg.getBoundingClientRect(), vx = (ev.clientX - b.left) / b.width * W;
+    let best = 0; rows.forEach((r, i) => { if (Math.abs(X(r.epoch) - vx) < Math.abs(X(rows[best].epoch) - vx)) best = i; });
+    cur = best; show(best);
+  });
+  hit.addEventListener("pointerleave", hide);
+  hit.addEventListener("focus", () => show(cur)); hit.addEventListener("blur", hide);
+  hit.addEventListener("keydown", ev => {
+    if (ev.key === "ArrowLeft") { cur = Math.max(0, cur - 1); show(cur); }
+    if (ev.key === "ArrowRight") { cur = Math.min(rows.length - 1, cur + 1); show(cur); }
+  });
+}
+
+function figure(id, src, alt) {
+  const host = $(id);
+  if (!src) return;
+  const img = new Image(); img.className = "fig"; img.alt = alt; img.loading = "lazy";
+  img.src = src + "?v=" + encodeURIComponent(data.updated_at || "");
+  img.onload = () => { host.className = ""; host.replaceChildren(img); };
+}
+
+function table(id, head, rows) {
+  const t = $(id); t.replaceChildren();
+  const tr = t.insertRow(); head.forEach(h => { const th = document.createElement("th"); th.textContent = h; tr.appendChild(th); });
+  rows.forEach(r => { const row = t.insertRow(); r.forEach(c => { row.insertCell().textContent = c; }); });
+}
+
+function renderStatus(t) {
+  const st = t?.status || "not started";
+  const badge = $("badge");
+  badge.className = "badge " + (st.includes("error") || st.includes("cancel") ? "error" : st);
+  $("badgeText").textContent = {running: "Training on Kaggle", complete: "Run complete", queued: "Queued on Kaggle",
+    error: "Run failed"}[st] || st;
+  if (t?.url) $("kaggleLink").href = t.url;
+  const ep = t?.epoch || 0, tot = t?.epochs_total || data.performance?.config?.epochs || 0;
+  const done = st === "complete";
+  $("kEpoch").textContent = tot ? `${ep} / ${tot}` : (done ? `${data.performance?.epochs_run ?? "—"}` : "—");
+  $("kStage").textContent = t?.stage ? `stage: ${t.stage}` : (st === "running" ? "setting up environment" : "—");
+  const pct = done ? 100 : (tot ? ep / tot * 100 : 0);
+  $("progress").style.width = pct + "%";
+  $("progressText").textContent = done
+    ? `Finished: ${data.performance?.epochs_run ?? ep} epochs (best epoch ${data.performance?.best_epoch ?? t.best_epoch}). Early stopping ends the run when val mAP stops improving.`
+    : st === "running" ? (ep ? `${pct.toFixed(0)}% of planned epochs · last poll ${t.polled_at}` : "Kernel is running; epoch metrics appear when Kaggle publishes the log.")
+    : "Start the monitor: .venv/bin/python scripts/monitor.py";
+  $("errors").textContent = (t?.errors || []).join("\n");
+}
+
+function render() {
+  const t = data.training || {}, perf = data.performance, ds = data.dataset;
+  $("updated").textContent = data.updated_at ? "updated " + new Date(data.updated_at).toLocaleTimeString() : "";
+  renderStatus(t);
+
+  const rows = (t.epochs || []).map(r => ({...r, epoch: Math.round(r.epoch)}));
+  const best = rows.reduce((b, r) => (r["metrics/mAP50-95(B)"] ?? -1) > (b?.["metrics/mAP50-95(B)"] ?? -1) ? r : b, null);
+  $("kBest").textContent = fmt(best?.["metrics/mAP50-95(B)"]);
+  $("kBestDetail").textContent = best ? `epoch ${best.epoch} · mAP50 ${fmt(best["metrics/mAP50(B)"])}` : "—";
+
+  lineChart($("lossChart"), rows, [
+    {key: "train/box_loss", label: "box (train)", color: "--s1"},
+    {key: "val/box_loss", label: "box (val)", color: "--s1", dash: true},
+    {key: "train/cls_loss", label: "cls (train)", color: "--s2"},
+    {key: "val/cls_loss", label: "cls (val)", color: "--s2", dash: true},
+  ], {label: "Loss per epoch"});
+  lineChart($("metricChart"), rows, [
+    {key: "metrics/mAP50(B)", label: "mAP50", color: "--s1"},
+    {key: "metrics/mAP50-95(B)", label: "mAP50-95", color: "--s2"},
+    {key: "metrics/precision(B)", label: "precision", color: "--s3"},
+    {key: "metrics/recall(B)", label: "recall", color: "--s4"},
+  ], {ymin: 0, ymax: 1, label: "Validation metrics per epoch"});
+  table("epochTable", ["Epoch", "train box", "train cls", "val box", "val cls", "P", "R", "mAP50", "mAP50-95"],
+    rows.slice().reverse().map(r => [r.epoch, fmt(r["train/box_loss"]), fmt(r["train/cls_loss"]), fmt(r["val/box_loss"]),
+      fmt(r["val/cls_loss"]), fmt(r["metrics/precision(B)"]), fmt(r["metrics/recall(B)"]), fmt(r["metrics/mAP50(B)"]), fmt(r["metrics/mAP50-95(B)"])]));
+
+  if (perf?.test) {
+    const o = perf.test.overall;
+    $("kTest50").textContent = fmt(o.mAP50); $("kTest").textContent = fmt(o["mAP50-95"]);
+    $("kTestDetail").textContent = `P ${fmt(o.precision)} · R ${fmt(o.recall)}`;
+    $("perfNote").textContent = `${perf.config.model}, best epoch ${perf.best_epoch}, ${perf.config.gpu}`;
+    table("classTable", ["Class", "Precision", "Recall", "mAP50", "mAP50-95"],
+      [...CLASSES.filter(c => perf.test.per_class[c]).map(c => { const p = perf.test.per_class[c];
+        return [c, fmt(p.precision), fmt(p.recall), fmt(p.mAP50), fmt(p["mAP50-95"])]; }),
+       ["All", fmt(o.precision), fmt(o.recall), fmt(o.mAP50), fmt(o["mAP50-95"])]]);
+    figure("predFig", perf.figures.test_predictions, "Model predictions on a test batch");
+    figure("cmFig", perf.figures.confusion_matrix, "Normalized confusion matrix on the test split");
+    figure("prFig", perf.figures.pr_curve, "Precision-recall curve per class on the test split");
+  }
+
+  if (ds) {
+    $("dsNote").textContent = `${ds.images.toLocaleString()} images · ${ds.cells.toLocaleString()} annotated cells · median ${ds.cells_per_image.median} cells per image · ${ds.problems} label problems`;
+    const lg = $("dsLegend"); lg.replaceChildren();
+    for (const c of CLASSES) { const s = document.createElement("span"), sw = document.createElement("i");
+      sw.className = "sw"; sw.style.background = css(CLASS_VAR[c]); s.append(sw, document.createTextNode(c)); lg.appendChild(s); }
+    const host = $("dsStacks"); host.replaceChildren();
+    const maxTotal = Math.max(...Object.values(ds.splits).map(s => CLASSES.reduce((a, c) => a + s[c], 0)));
+    for (const [name, s] of Object.entries(ds.splits)) {
+      const total = CLASSES.reduce((a, c) => a + s[c], 0);
+      const row = document.createElement("div"); row.className = "stack-row";
+      const lab = document.createElement("span"); lab.textContent = name;
+      const stack = document.createElement("div"); stack.className = "stack"; stack.style.width = (total / maxTotal * 100) + "%";
+      for (const c of CLASSES) { const seg = document.createElement("div"); seg.style.flex = s[c]; seg.style.background = css(CLASS_VAR[c]);
+        seg.title = `${name} · ${c}: ${s[c].toLocaleString()} cells`; stack.appendChild(seg); }
+      const tot = document.createElement("span"); tot.className = "right"; tot.textContent = total.toLocaleString();
+      row.append(lab, stack, tot); host.appendChild(row);
+    }
+    table("dsTable", ["Split", "Images", ...CLASSES],
+      Object.entries(ds.splits).map(([n, s]) => [n, s.images.toLocaleString(), ...CLASSES.map(c => s[c].toLocaleString())]));
+    figure("sampleFig", ds.sample_image, "Training images with ground-truth boxes");
+  }
+}
+
+async function load() {
+  try {
+    const r = await fetch("data.json?t=" + Date.now(), {cache: "no-store"});
+    data = await r.json(); render();
+  } catch (e) {
+    $("badgeText").textContent = "Can't read data.json";
+    $("progressText").textContent = "Serve the project folder over HTTP: .venv/bin/python -m http.server 8000, then open http://localhost:8000/dashboard/";
+  }
+}
+$("refresh").addEventListener("click", load);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+load();
+setInterval(load, 20000);
+</script>
+</body>
+</html>

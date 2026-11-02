@@ -1,9 +1,22 @@
+# secrets
 .env
 .env.*
 !.env.example
+KAGGLE_API_TOKEN*
+
+# raw data (re-extract with scripts/dataset_report.py)
 Data/*.zip
+Data/*/
+
+# environments / generated
+.venv/
+__pycache__/
+outputs/
+outputs_monitor.log
+kaggle/kernel/kernel-metadata.json
+dashboard/data.tmp
 *.pt
 *.onnx
 runs/
-__pycache__/
 .DS_Store
+.vscode/

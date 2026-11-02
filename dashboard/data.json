@@ -1,0 +1,67 @@
+{
+ "dataset": {
+  "name": "TXL-PBC",
+  "classes": [
+   "WBC",
+   "RBC",
+   "Platelets"
+  ],
+  "images": 1260,
+  "cells": 18143,
+  "splits": {
+   "train": {
+    "images": 882,
+    "WBC": 908,
+    "RBC": 11220,
+    "Platelets": 382
+   },
+   "val": {
+    "images": 252,
+    "WBC": 257,
+    "RBC": 3383,
+    "Platelets": 112
+   },
+   "test": {
+    "images": 126,
+    "WBC": 133,
+    "RBC": 1699,
+    "Platelets": 49
+   }
+  },
+  "mean_box_px": {
+   "WBC": [
+    190,
+    193
+   ],
+   "RBC": [
+    95,
+    95
+   ],
+   "Platelets": [
+    36,
+    36
+   ]
+  },
+  "cells_per_image": {
+   "min": 4,
+   "max": 32,
+   "median": 14
+  },
+  "resolutions": 5,
+  "problems": 0,
+  "sample_image": "../reports/figures/dataset_samples.jpg"
+ },
+ "updated_at": "2026-11-02T22:57:14+00:00",
+ "training": {
+  "kernel": "miaspector/txl-pbc-yolo26",
+  "url": "https://www.kaggle.com/code/miaspector/txl-pbc-yolo26",
+  "status": "running",
+  "stage": null,
+  "errors": [],
+  "epoch": 0,
+  "epochs_total": 0,
+  "best_epoch": 0,
+  "epochs": [],
+  "polled_at": "2026-11-02T23:57:14+0100"
+ }
+}
