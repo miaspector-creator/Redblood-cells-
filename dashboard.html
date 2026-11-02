@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Blood Cell Model Dashboard</title>
+  <style>
+    :root{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e7edf5;background:#0a1019;font-synthesis:none;text-rendering:optimizeLegibility;--panel:#111a27;--line:#243244;--muted:#91a1b5;--cyan:#59d5ce;--blue:#6fa7ff;--amber:#f2bd68;--red:#fa817d}
+    *{box-sizing:border-box}body{margin:0;min-width:320px}button,input,select{font:inherit}button,.file-button{border:1px solid #35475b;border-radius:9px;color:#e7edf5;background:#172333;padding:9px 13px;cursor:pointer}button:hover,.file-button:hover{border-color:var(--cyan)}a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
+    .shell{max-width:1440px;margin:auto;padding:30px 34px 42px}.top{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:22px}.eyebrow{font-size:11px;font-weight:750;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan)}h1{font-size:clamp(25px,3vw,36px);letter-spacing:-.04em;margin:8px 0}.subtitle{color:var(--muted);font-size:14px}.actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end}.update{color:var(--muted);font-size:12px}
+    .banner{padding:14px 16px;margin:17px 0 20px;border:1px solid #76562b;background:#2c2317;border-radius:12px;color:#f2d5a5;line-height:1.55}.banner strong{color:#ffe0a6}.banner.error{border-color:#713b41;background:#2b191e;color:#ffc6c0}
+    .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:15px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:17px;min-width:0}.span-3{grid-column:span 3}.span-4{grid-column:span 4}.span-5{grid-column:span 5}.span-7{grid-column:span 7}.span-8{grid-column:span 8}.span-12{grid-column:span 12}
+    .label{font-size:12px;color:var(--muted);font-weight:600}.value{font-size:26px;font-weight:730;letter-spacing:-.04em;margin:10px 0 5px}.detail{font-size:12px;color:var(--muted);line-height:1.5}.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}.card h2{font-size:15px;margin:0 0 5px}.status{display:inline-flex;align-items:center;gap:7px;border-radius:99px;background:#1b2936;padding:6px 9px;font-size:11px;color:#c5d2df;white-space:nowrap}.dot{width:7px;height:7px;border-radius:50%;background:#738398}.dot.green{background:#5ad1a0}.dot.amber{background:var(--amber)}.dot.red{background:var(--red)}
+    .progress{height:8px;border-radius:8px;background:#263547;overflow:hidden;margin:16px 0 9px}.progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,#4cc7c0,#76a9ff);transition:width .25s}.progress-meta{display:flex;justify-content:space-between;color:var(--muted);font-size:11px}
+    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.metric{border:1px solid var(--line);border-radius:10px;padding:11px}.metric strong{display:block;font-size:18px;margin:6px 0}.metric small{font-size:10px;color:var(--muted)}
+    .chart-wrap{width:100%;overflow-x:auto}svg.chart{display:block;width:100%;min-width:540px;height:auto;overflow:visible}.chart text{fill:#9badc1;font-size:11px;font-family:inherit}.chart .gridline{stroke:#283748;stroke-width:1}.empty{height:190px;display:grid;place-items:center;text-align:center;color:var(--muted);border:1px dashed #35475b;border-radius:10px;font-size:13px;padding:22px;line-height:1.6}
+    .dataset-list{display:grid;gap:9px}.dataset-row{display:grid;grid-template-columns:minmax(115px,1.3fr) minmax(100px,3fr) auto;align-items:center;gap:10px;font-size:11px}.dataset-row .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c9d5e2}.bar-bg{height:8px;border-radius:8px;background:#273648;overflow:hidden}.bar-fill{height:100%;border-radius:8px;background:var(--blue)}.count{color:var(--muted);font-variant-numeric:tabular-nums}
+    .split-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}.split{padding:11px;border:1px solid var(--line);border-radius:10px}.split strong{display:block;font-size:16px;margin-top:5px}.dataset-select{max-width:220px;border:1px solid #35475b;border-radius:8px;background:#172333;color:#e7edf5;padding:8px}
+    .table{width:100%;border-collapse:collapse;font-size:12px}.table th,.table td{text-align:left;padding:10px 7px;border-bottom:1px solid var(--line);vertical-align:top}.table th{color:var(--muted);font-weight:600}.table td:last-child{color:#c3d0de}.table tr:last-child td{border-bottom:0}
+    .foot{margin-top:19px;color:var(--muted);font-size:11px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.hidden{display:none!important}
+    @media(max-width:900px){.span-3,.span-4,.span-5,.span-7,.span-8{grid-column:span 6}.span-12{grid-column:span 12}.metrics{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:600px){.shell{padding:21px 14px}.top{display:block}.actions{justify-content:flex-start;margin-top:15px}.span-3,.span-4,.span-5,.span-7,.span-8,.span-12{grid-column:span 12}.dataset-row{grid-template-columns:minmax(95px,1.2fr) minmax(70px,2fr) auto}.split-grid{grid-template-columns:1fr 1fr}.split-grid .split:last-child{grid-column:span 2}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="top">
+      <div>
+        <div class="eyebrow">Blood cell ML · experiment monitor</div>
+        <h1>Training dashboard</h1>
+        <div class="subtitle">TXL-PBC detection data · run progress · held-out performance</div>
+      </div>
+      <div class="actions">
+        <span class="update" id="updated">Loading status…</span>
+        <button id="refresh" type="button">Refresh</button>
+        <label class="file-button" for="upload">Import run JSON</label>
+        <input class="hidden" id="upload" type="file" accept=".json,application/json">
+      </div>
+    </header>
+
+    <div id="notice" class="banner" role="status"></div>
+    <section class="grid" aria-label="Training overview">
+      <article class="card span-3"><div class="label">Image paths found</div><div class="value" id="totalImages">—</div><div class="detail">TXL-PBC path scan; payloads unverified</div></article>
+      <article class="card span-3"><div class="label">ZIP integrity</div><div class="value" id="readyCount">—</div><div class="detail">TXL-PBC archive verification</div></article>
+      <article class="card span-3"><div class="label">Training status</div><div class="value" id="runStatus">—</div><div class="detail" id="runDetail"></div></article>
+      <article class="card span-3"><div class="label">Label paths found</div><div class="value" id="bboxStatus">—</div><div class="detail">Contents and class IDs unverified</div></article>
+
+      <article class="card span-5">
+        <div class="card-head"><div><h2>Training progress</h2><div class="detail" id="epochText">No training epochs recorded</div></div><span class="status"><i class="dot" id="runDot"></i><span id="runBadge">Not started</span></span></div>
+        <div class="progress" aria-label="Training progress"><span id="progressBar"></span></div>
+        <div class="progress-meta"><span id="progressLabel">0% complete</span><span id="timeLabel">Waiting for run data</span></div>
+      </article>
+      <article class="card span-7">
+        <div class="card-head"><div><h2>Model performance</h2><div class="detail" id="performanceDetail">Metrics appear after held-out evaluation.</div></div><span class="status"><i class="dot" id="evalDot"></i><span id="evalBadge">Not evaluated</span></span></div>
+        <div class="metrics" id="metricCards"></div>
+      </article>
+
+      <article class="card span-7">
+        <div class="card-head"><div><h2>Epoch metrics</h2><div class="detail">Training and validation loss or detection metrics when available.</div></div></div>
+        <div id="epochChart"></div>
+      </article>
+      <article class="card span-5">
+        <div class="card-head"><div><h2>TXL-PBC split counts</h2><div class="detail" id="distributionDetail"></div></div><select id="datasetSelect" class="dataset-select" aria-label="Choose dataset"></select></div>
+        <div class="chart-wrap"><div id="classChart" class="dataset-list"></div></div>
+        <div class="split-grid" id="splitSummary"></div>
+      </article>
+
+      <article class="card span-12">
+        <div class="card-head"><div><h2>TXL-PBC archive readiness</h2><div class="detail">Path names suggest a YOLO-style layout; file contents and annotations have not been verified.</div></div></div>
+        <div class="chart-wrap"><table class="table"><thead><tr><th>Source</th><th>Status</th><th>Image paths</th><th>Label paths</th><th>Recoverable split structure</th></tr></thead><tbody id="datasetTable"></tbody></table></div>
+      </article>
+    </section>
+    <footer class="foot">
+      <span>Refreshes <code>dashboard_data.json</code> every 5 seconds when served over HTTP. Import a JSON run snapshot to view it immediately.</span>
+      <span><a href="Data/dataset_report.md">Dataset report</a> · <a href="Data/training_progress_report.md">Training report</a> · <a href="Data/model_performance_report.md">Performance report</a></span>
+    </footer>
+  </main>
+<script>
+  const fallback = {
+    updated_at: null,
+    run: {status:"not_started",task:"detection",model:"YOLO26",epoch:0,epochs:0,metrics:[],evaluation:{},detection_ready:false,message:"Training has not started because the TXL-PBC archive is damaged."},
+    datasets: [
+      {name:"TXL-PBC",archive:"TXL-PBC.zip",status:"corrupt_paths_recovered",images:1260,label_files:1260,splits:{train:882,val:252,test:126},classes:[],task:"detection",annotation:"Image/label path pairs recovered; payloads and annotations unverified"}
+    ]
+  };
+  let state = fallback;
+  const byId = id => document.getElementById(id);
+  const escapeHtml = value => String(value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const fmt = n => n!==null&&n!==undefined&&n!==""&&Number.isFinite(Number(n)) ? Number(n).toLocaleString() : "—";
+  function setText(id,value){byId(id).textContent=value}
+  function render(){
+    const datasets=Array.isArray(state.datasets)?state.datasets:[];
+    const run=state.run||{};
+    const txl=datasets.find(d=>d.name==="TXL-PBC")||datasets[0]||{};
+    setText("totalImages",fmt(txl.images));
+    setText("readyCount",txl.status==="corrupt_paths_recovered"||txl.status==="corrupt"?"Failed":txl.status==="ready"?"Passed":"Unknown");
+    const status=run.status||"not_started";
+    setText("runStatus",({not_started:"Not started",running:"Running",completed:"Complete",failed:"Failed"})[status]||status);
+    const taskLabel=({detection:"Object detection",classification:"Image classification"})[run.task]||"Task not selected";
+    setText("runDetail",`${run.model||"Model not selected"} · ${taskLabel}`);
+    setText("bboxStatus",fmt(txl.label_files));
+    const detectionReady=run.detection_ready===true;
+    byId("bboxStatus").style.color="var(--amber)";
+    const notice=byId("notice");
+    if(!detectionReady){
+      notice.className="banner error";
+      notice.innerHTML=`<strong>TXL-PBC only.</strong> A path-level scan recovered 1,260 image paths and 1,260 matching label paths: 882 train, 252 validation, and 126 test pairs. The ZIP is damaged, so image contents, label syntax, class IDs, and <code>data.yaml</code> values cannot be verified. Training is blocked until a clean archive is provided; no model metrics are available.`;
+    }else{
+      notice.className="banner";notice.textContent=run.message||"Dataset reports detection annotations are available.";
+    }
+    const current=Math.max(0,Number(run.epoch)||0),epochs=Math.max(0,Number(run.epochs)||0);
+    const pct=epochs?Math.min(100,Math.round(current/epochs*100)):0;
+    byId("progressBar").style.width=`${pct}%`;
+    setText("progressLabel",`${pct}% complete`);setText("epochText",epochs?`Epoch ${fmt(current)} of ${fmt(epochs)}`:"No training epochs recorded");
+    setText("timeLabel",run.elapsed|| (status==="running"?"Training in progress":"Waiting for run data"));
+    const running=status==="running";
+    byId("runDot").className=`dot ${running?"green":status==="failed"?"red":""}`;
+    setText("runBadge",({not_started:"Not started",running:"Live",completed:"Completed",failed:"Failed"})[status]||status);
+    const evaluation=run.evaluation||{};
+    const isDetection=run.task!=="classification";
+    const specs=isDetection?[["Precision","precision"],["Recall","recall"],["mAP50","map50"],["mAP50–95","map50_95"]]:[["Accuracy","accuracy"],["Macro F1","macro_f1"],["Precision","precision"],["Recall","recall"]];
+    byId("metricCards").innerHTML=specs.map(([label,key])=>{
+      const value=evaluation[key];
+      const shown=Number.isFinite(Number(value))&&value!==null?`${(Number(value)*100).toFixed(2)}%`:"—";
+      return `<div class="metric"><small>${label}</small><strong>${shown}</strong><small>${value==null?"Not evaluated":"Held-out test"}</small></div>`;
+    }).join("");
+    const evaluated=Object.values(evaluation).some(v=>v!==null&&v!==undefined&&Number.isFinite(Number(v)));
+    byId("evalDot").className=`dot ${evaluated?"green":""}`;
+    setText("evalBadge",evaluated?"Evaluated":"Not evaluated");
+    setText("performanceDetail",evaluated?"Reported from the supplied held-out evaluation data.":"Metrics appear after held-out evaluation; no results are fabricated.");
+    renderEpochChart(Array.isArray(run.metrics)?run.metrics:[]);
+    renderDatasets(datasets);
+    setText("updated",state.updated_at?`Updated ${new Date(state.updated_at).toLocaleString()}`:"Using inspected dataset snapshot");
+  }
+  function renderEpochChart(rows){
+    const host=byId("epochChart");
+    const valid=rows.filter(r=>Number.isFinite(Number(r.epoch)));
+    const series=[["train_loss","Train loss","#59d5ce"],["val_loss","Validation loss","#6fa7ff"],["accuracy","Accuracy","#f2bd68"]]
+      .map(([key,label,color])=>({key,label,color,values:valid.map(r=>({x:Number(r.epoch),y:Number(r[key])})).filter(p=>Number.isFinite(p.y))}))
+      .filter(s=>s.values.length);
+    if(!series.length){host.innerHTML='<div class="empty">No epoch history has been recorded yet.<br>Import a run JSON snapshot or update <code>dashboard_data.json</code> with training metrics.</div>';return}
+    const width=700,height=210,left=48,right=16,top=18,bottom=34,plotW=width-left-right,plotH=height-top-bottom;
+    const all=series.flatMap(s=>s.values.map(p=>p.y));let min=Math.min(...all),max=Math.max(...all);if(min===max){min-=.05;max+=.05}
+    const xMin=Math.min(...valid.map(r=>Number(r.epoch))),xMax=Math.max(...valid.map(r=>Number(r.epoch)));
+    const x=p=>left+(xMax===xMin?.5:(p.x-xMin)/(xMax-xMin))*plotW;
+    const y=v=>top+plotH-(v-min)/(max-min)*plotH;
+    let svg=`<svg class="chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Training metrics by epoch">`;
+    for(let i=0;i<4;i++){const gy=top+plotH*i/3;svg+=`<line class="gridline" x1="${left}" x2="${width-right}" y1="${gy}" y2="${gy}"/><text x="${left-8}" y="${gy+4}" text-anchor="end">${(max-(max-min)*i/3).toFixed(2)}</text>`}
+    svg+=`<text x="${left}" y="${height-7}">Epoch ${xMin}</text><text x="${width-right}" y="${height-7}" text-anchor="end">Epoch ${xMax}</text>`;
+    for(const s of series){const points=s.values.map(p=>`${x(p)},${y(p.y)}`).join(" ");svg+=`<polyline fill="none" stroke="${s.color}" stroke-width="2.5" points="${points}"/>`;for(const p of s.values)svg+=`<circle cx="${x(p)}" cy="${y(p.y)}" r="3" fill="${s.color}"/>`}
+    svg+="</svg>"+`<div class="detail">${series.map(s=>`<span style="color:${s.color};margin-right:15px">● ${s.label}</span>`).join("")}</div>`;
+    host.innerHTML=svg;
+  }
+  function renderDatasets(datasets){
+    const select=byId("datasetSelect"),old=select.value;
+    select.innerHTML=datasets.map((d,i)=>`<option value="${i}">${escapeHtml(d.name)}</option>`).join("");
+    if(old&&Number(old)<datasets.length)select.value=old;
+    select.onchange=()=>drawSelected(datasets);
+    drawSelected(datasets);
+    byId("datasetTable").innerHTML=datasets.map(d=>{
+      const status=d.status==="corrupt_paths_recovered"?"Damaged; paths recovered":d.status==="ready"?"Ready":"Unreadable";
+      const splits=d.splits||{};
+      const splitText=Object.keys(splits).length?`train ${fmt(splits.train)}, val ${fmt(splits.val)}, test ${fmt(splits.test)}`:"Not recovered";
+      return `<tr><td>${escapeHtml(d.archive||d.name)}</td><td>${status}</td><td>${fmt(d.images)}</td><td>${fmt(d.label_files)}</td><td>${splitText}</td></tr>`;
+    }).join("");
+  }
+  function drawSelected(datasets){
+    const d=datasets[Number(byId("datasetSelect").value)]||datasets[0];
+    const host=byId("classChart"),splitHost=byId("splitSummary");
+    if(!d){host.innerHTML='<div class="empty">No dataset details available.</div>';splitHost.innerHTML="";return}
+    setText("distributionDetail",`${d.name} · filename pairs recovered; file contents unverified`);
+    const splits=d.splits||{};
+    const counts=["train","val","test"].filter(k=>Number.isFinite(Number(splits[k]))).map(k=>({name:({train:"Train",val:"Validation",test:"Test"})[k],total:Number(splits[k])}));
+    const max=Math.max(1,...counts.map(c=>c.total));
+    host.innerHTML=counts.length?counts.map(c=>`<div class="dataset-row"><span class="name" title="${escapeHtml(c.name)}">${escapeHtml(c.name)}</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.max(1,c.total/max*100)}%"></div></div><span class="count">${fmt(c.total)} pairs</span></div>`).join(""):'<div class="empty">No split paths were recovered from this archive.</div>';
+    const available=["train","val","test"].filter(k=>Number.isFinite(Number(splits[k])));
+    splitHost.innerHTML=available.length?available.map(k=>`<div class="split"><span class="label">${({train:"Train",val:"Validation",test:"Test"})[k]} pairs</span><strong>${fmt(splits[k])}</strong></div>`).join(""):'<div class="detail">No split paths were recovered.</div>';
+  }
+  async function refresh(){
+    try{
+      const response=await fetch(`dashboard_data.json?t=${Date.now()}`,{cache:"no-store"});
+      if(!response.ok)throw new Error(`HTTP ${response.status}`);
+      const incoming=await response.json();
+      if(!incoming||!Array.isArray(incoming.datasets))throw new Error("JSON must contain a datasets array.");
+      state=incoming;render();
+    }catch(error){
+      if(!state||!Array.isArray(state.datasets))state=fallback;
+      render();
+      if(location.protocol!=="file:")setText("updated",`Snapshot unavailable: ${error.message}`);
+    }
+  }
+  byId("upload").addEventListener("change",async event=>{
+    const file=event.target.files?.[0];if(!file)return;
+    try{const imported=JSON.parse(await file.text());if(!Array.isArray(imported.datasets))throw new Error("JSON must contain a datasets array.");state=imported;render();setText("updated",`Imported ${file.name}`)}
+    catch(error){setText("updated",`Import failed: ${error.message}`)}
+    event.target.value="";
+  });
+  byId("refresh").addEventListener("click",refresh);
+  render();refresh();setInterval(refresh,5000);
+</script>
+</body>
+</html>
