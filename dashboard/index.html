@@ -230,14 +230,14 @@ function table(id, head, rows) {
   rows.forEach(r => { const row = t.insertRow(); r.forEach(c => { row.insertCell().textContent = c; }); });
 }
 
-function renderStatus(t) {
+function renderStatus(t, rows) {
   const st = t?.status || "not started";
   const badge = $("badge");
   badge.className = "badge " + (st.includes("error") || st.includes("cancel") ? "error" : st);
   $("badgeText").textContent = {running: "Training on Kaggle", complete: "Run complete", queued: "Queued on Kaggle",
     error: "Run failed"}[st] || st;
   if (t?.url) $("kaggleLink").href = t.url;
-  const ep = t?.epoch || 0, tot = t?.epochs_total || data.performance?.config?.epochs || 0;
+  const ep = rows.length ? rows[rows.length - 1].epoch : (t?.epoch || 0), tot = t?.epochs_total || data.performance?.config?.epochs || 0;
   const done = st === "complete";
   $("kEpoch").textContent = tot ? `${ep} / ${tot}` : (done ? `${data.performance?.epochs_run ?? "—"}` : "—");
   $("kStage").textContent = t?.stage ? `stage: ${t.stage}` : (st === "running" ? "setting up environment" : "—");
@@ -253,9 +253,11 @@ function renderStatus(t) {
 function render() {
   const t = data.training || {}, perf = data.performance, ds = data.dataset;
   $("updated").textContent = data.updated_at ? "updated " + new Date(data.updated_at).toLocaleTimeString() : "";
-  renderStatus(t);
-
-  const rows = (t.epochs || []).map(r => ({...r, epoch: Math.round(r.epoch)}));
+  // After training, Ultralytics appends one more row: a final validation of best.pt. It has no val losses
+  // and its train losses are copied from the last epoch, so it is not a training epoch.
+  const rows = (t.epochs || []).map(r => ({...r, epoch: Math.round(r.epoch)}))
+    .filter((r, i, a) => !(i > 0 && i === a.length - 1 && r["val/box_loss"] == null));
+  renderStatus(t, rows);
   const best = rows.reduce((b, r) => (r["metrics/mAP50-95(B)"] ?? -1) > (b?.["metrics/mAP50-95(B)"] ?? -1) ? r : b, null);
   $("kBest").textContent = fmt(best?.["metrics/mAP50-95(B)"]);
   $("kBestDetail").textContent = best ? `epoch ${best.epoch} · mAP50 ${fmt(best["metrics/mAP50(B)"])}` : "—";
