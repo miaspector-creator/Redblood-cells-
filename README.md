@@ -1,3 +1,4 @@
+**Live dashboard:** https://miaspector-creator.github.io/Redblood-cells-/dashboard/
 # Blood cell detection with YOLO26
 
 Fine-tunes an Ultralytics **YOLO26** detector (`yolo26s.pt`) to locate and classify
