@@ -219,7 +219,7 @@ function lineChart(host, rows, series, opts = {}) {
 function figure(id, src, alt) {
   const host = $(id);
   if (!src) return;
-  const img = new Image(); img.className = "fig"; img.alt = alt; img.loading = "lazy";
+  const img = new Image(); img.className = "fig"; img.alt = alt;
   img.src = src + "?v=" + encodeURIComponent(data.updated_at || "");
   img.onload = () => { host.className = ""; host.replaceChildren(img); };
 }
