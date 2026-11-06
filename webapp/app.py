@@ -24,7 +24,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 ROOT = Path(__file__).resolve().parent.parent
 STATIC = Path(__file__).resolve().parent / "static"
-SAMPLES_DIR = ROOT / "Data" / "TXL-PBC" / "images" / "test"
+SAMPLES_DIR = Path(os.environ.get("BLOODCELL_SAMPLES", ROOT / "Data" / "TXL-PBC" / "images" / "test"))
 MODEL_CANDIDATES = [
     ROOT / "outputs" / "runs" / "txl_pbc" / "weights" / "best.pt",
     ROOT / "outputs" / "outputs" / "best.pt",
@@ -119,6 +119,9 @@ def _model_path() -> Path:
 def _device() -> str:
     import torch
 
+    forced = os.environ.get("BLOODCELL_DEVICE")   # e.g. "cpu" to mimic a free cloud host
+    if forced:
+        return forced
     if torch.cuda.is_available():
         return "cuda"
     if torch.backends.mps.is_available():
