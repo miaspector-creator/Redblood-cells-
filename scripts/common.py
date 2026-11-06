@@ -17,6 +17,15 @@ KAGGLE_USER = os.environ.get("KAGGLE_USERNAME", "miaspector")
 DATASET_SLUG = "txl-pbc"
 KERNEL_SLUG = "txl-pbc-yolo26"
 
+# Second model: white blood cell type classifier (BloodMNIST). Kept separate from the detector above.
+WBC_DATA_DIR = ROOT / "Data" / "bloodmnist"
+WBC_KERNEL_DIR = ROOT / "kaggle" / "kernel_wbc"
+WBC_OUTPUTS = OUTPUTS / "wbc_classifier"
+WBC_DATASET_SLUG = "bloodmnist-64"
+WBC_KERNEL_SLUG = "bloodmnist-yolo26-cls"
+WBC_CLASSES = ["basophil", "eosinophil", "erythroblast", "immature_granulocytes",
+               "lymphocyte", "monocyte", "neutrophil", "platelet"]
+
 
 def load_env():
     env_file = ROOT / ".env"

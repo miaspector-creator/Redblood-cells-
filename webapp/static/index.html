@@ -369,6 +369,21 @@
   .cell .n { font-family: var(--font-num); font-size: 26px; font-weight: 700; color: color-mix(in srgb, var(--c) 75%, var(--ink)); }
   .eye { border-radius: 10px; background: var(--panel); }
   .facts dd { font-family: var(--font-num); font-size: 13px; }
+  .wbct { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .wbct h3 { font-size: 13.5px; font-weight: 700; margin: 0 0 10px; }
+  .wbct h3 .muted { font-weight: 500; }
+  .wrow { display: grid; grid-template-columns: minmax(0, 1fr) 64px 26px 38px; align-items: center; gap: 8px; font-size: 13px; padding: 3px 0; }
+  .wrow.zero { opacity: .45; }
+  .wl { display: flex; align-items: center; gap: 7px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 550; }
+  .wl i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .wbar { height: 6px; border-radius: 3px; background: var(--panel-2); overflow: hidden; }
+  .wbar b { display: block; height: 100%; border-radius: 3px; }
+  .wn, .wp { text-align: right; font-size: 12.5px; }
+  .wp { color: var(--muted); }
+  .top-slot:empty { display: none; }
+  .top-slot .wbct { margin: 0 0 14px; padding: 12px 12px 8px; border: 1px solid color-mix(in srgb, var(--wbc) 22%, transparent);
+    border-radius: 14px; background: color-mix(in srgb, var(--wbc) 6%, var(--panel)); }
+  .focus-seg button[data-focus="wbc"][aria-pressed="true"] { color: var(--wbc); }
   .strict { background: var(--panel-2); border: 1px solid var(--line); border-radius: 13px; padding: 4px; gap: 4px; }
   .strict button { border: 0; background: transparent; border-radius: 9px; font-weight: 600; color: var(--muted); }
   .strict button:hover { color: var(--ink); }
@@ -500,6 +515,10 @@
     <section class="card" aria-label="Image viewer">
       <div class="viewer-bar">
         <div class="viewer-title"><span class="name" id="vName"></span><span class="sub" id="vSub"></span></div>
+        <div class="seg focus-seg" role="group" aria-label="Which cells to show">
+          <button data-focus="all" aria-pressed="true" title="Show every cell (W)">All cells</button>
+          <button data-focus="wbc" aria-pressed="false" title="Show white blood cells only (W)">White cells</button>
+        </div>
         <div class="seg" role="group" aria-label="How to show cells">
           <button data-view="boxes" aria-pressed="true">Boxes</button>
           <button data-view="labels" aria-pressed="false" title="Boxes with cell type and certainty">Labels</button>
@@ -521,8 +540,10 @@
       <section class="card pad" aria-label="Results">
         <h2 class="label">Results</h2>
         <p class="summary" id="summary"></p>
+        <div class="top-slot" id="wbcTop"></div>
         <div class="cells" id="cells"></div>
         <dl class="facts" id="facts"></dl>
+        <div id="wbcTypes"></div>
       </section>
 
       <section class="card pad" aria-label="Detection strictness">
@@ -590,6 +611,10 @@
   <div class="live-bar">
     <div class="live-title"><span class="live-badge" id="liveRec"><i></i><span id="liveBadgeText">LIVE</span></span><b>Live camera</b><span class="muted" id="liveFps" style="font-size:13px"></span></div>
     <select class="cam" id="camSel" aria-label="Choose camera" hidden></select>
+    <div class="seg focus-seg" role="group" aria-label="Which cells to show">
+      <button data-focus="all" aria-pressed="true" title="Show every cell (W)">All cells</button>
+      <button data-focus="wbc" aria-pressed="false" title="Show white blood cells only (W)">White cells</button>
+    </div>
     <div class="seg" role="group" aria-label="How to show cells">
       <button data-view="boxes" aria-pressed="true">Boxes</button>
       <button data-view="labels" aria-pressed="false">Labels</button>
@@ -610,13 +635,15 @@
       <section class="card pad" aria-label="Live count">
         <h2 class="label">Cells in view</h2>
         <p class="summary" id="liveSummary"></p>
+        <div class="top-slot" id="liveWbcTop"></div>
         <div class="cells" id="liveCells"></div>
+        <div id="liveWbcTypes"></div>
         <p class="hint" id="liveAvg"></p>
       </section>
       <section class="card pad">
         <button class="btn primary lg" id="liveCapture" style="width:100%"><svg><use href="#i-camera"/></svg>Capture this view</button>
         <p class="hint">Saves the current frame and its counts to <b>Your images</b>, where you can review and download them.
-          Shortcuts: <b>C</b> capture · <b>P</b> pause · <b>Esc</b> done.</p>
+          Shortcuts: <b>C</b> capture · <b>P</b> pause · <b>W</b> white cells only · <b>Esc</b> done.</p>
       </section>
       <section class="card pad" aria-label="Detection strictness">
         <h2 class="label">How strict should counting be?</h2>
@@ -654,6 +681,12 @@
       <li><b style="color:var(--wbc)">White blood cells (WBC)</b>: immune cells; larger, with a dark purple nucleus.</li>
       <li><b style="color:var(--plt)">Platelets</b>: small fragments that help blood clot.</li>
     </ul>
+    <h3>White cell types</h3>
+    <p>A second AI model looks at each white blood cell the counter finds and names its type: <b>neutrophil, lymphocyte,
+      monocyte, eosinophil, basophil</b> or <b>immature granulocyte</b>. The breakdown (a "WBC differential") shows how many of each
+      and their share. Hover a white cell to see the model's top three guesses. Switch the toolbar to <b>White cells</b>
+      (or press <b>W</b>) to hide red cells and platelets and put the white cell breakdown first. Typing a few cells gives a rough picture;
+      a reliable differential needs many cells (often 100+), e.g. by capturing several views in live mode.</p>
     <h3>Strictness</h3>
     <p>Each cell the AI finds comes with a certainty score. <b>Relaxed</b> counts more cells but may include a few mistakes,
       <b>Strict</b> only counts cells it's very sure about, and <b>Balanced</b> is a good default. Changing it updates the counts instantly.</p>
@@ -685,11 +718,52 @@ const CELLS = [
   { key: "WBC", name: "White blood cells", short: "WBC", plural: "white cells", v: "--wbc" },
   { key: "Platelets", name: "Platelets", short: "PLT", plural: "platelets", v: "--plt" },
 ];
+// White blood cell types from the second model (BloodMNIST classifier).
+const WBC_TYPES = [
+  { key: "neutrophil", name: "Neutrophils", one: "Neutrophil", short: "NEU", col: "#7048e8" },
+  { key: "lymphocyte", name: "Lymphocytes", one: "Lymphocyte", short: "LYM", col: "#1c7ed6" },
+  { key: "monocyte", name: "Monocytes", one: "Monocyte", short: "MON", col: "#0ca678" },
+  { key: "eosinophil", name: "Eosinophils", one: "Eosinophil", short: "EOS", col: "#f76707" },
+  { key: "basophil", name: "Basophils", one: "Basophil", short: "BAS", col: "#ae3ec9" },
+  { key: "immature_granulocytes", name: "Immature (IG)", full: "Immature granulocytes", one: "Immature granulocyte", short: "IG", col: "#e64980" },
+];
+const wbcType = (k) => WBC_TYPES.find((t) => t.key === k) || { key: k, name: k, one: k, short: k.slice(0, 3).toUpperCase(), col: "#868e96" };
+const UNSURE = 0.5;
+function differential(dets) {
+  const wbcs = dets.filter((d) => d.cls === "WBC" && d.wbc);
+  const n = Object.fromEntries(WBC_TYPES.map((t) => [t.key, 0]));
+  let unsure = 0;
+  wbcs.forEach((d) => { n[d.wbc.type] = (n[d.wbc.type] || 0) + 1; if (d.wbc.conf < UNSURE) unsure++; });
+  return { total: wbcs.length, n, unsure };
+}
+// The "White cell types" breakdown (WBC differential) shown under the counts.
+function wbcTypesHTML(dets, result) {
+  const anyWbc = dets.some((d) => d.cls === "WBC");
+  if (!anyWbc) return "";
+  if (!result?.wbc_classifier) {
+    return `<div class="wbct"><h3>White cell types</h3><p class="hint" style="margin:0">${state.wbcReady
+      ? "This image was counted before the cell-type model was ready. Remove and re-add it to type its white cells."
+      : "Cell typing turns on automatically once the white blood cell model is available."}</p></div>`;
+  }
+  const D = differential(dets);
+  return `<div class="wbct"><h3>White cell types <span class="muted">· ${D.total} typed</span></h3>
+    ${WBC_TYPES.map((t) => {
+      const c = D.n[t.key], p = D.total ? c / D.total : 0;
+      return `<div class="wrow ${c ? "" : "zero"}" title="${t.full || t.name}: ${c} (${Math.round(p * 100)}%)"><span class="wl"><i style="background:${t.col}"></i>${t.name}</span>
+        <span class="wbar"><b style="width:${(p * 100).toFixed(1)}%;background:${t.col}"></b></span>
+        <span class="wn num">${c}</span><span class="wp num">${Math.round(p * 100)}%</span></div>`;
+    }).join("")}
+    ${D.unsure ? `<p class="hint">${D.unsure} of ${D.total} typed with low certainty (under ${UNSURE * 100}%). Hover a white cell to see the model's top guesses.</p>` : ""}
+  </div>`;
+}
 const STRICT = { "0.15": "Relaxed", "0.25": "Balanced", "0.5": "Strict" };
 const ZOOMS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4];
 const $ = (id) => document.getElementById(id);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
-const state = { items: [], active: -1, hidden: new Set(), conf: 0.25, ready: false, hover: null, view: "boxes", zoom: "fit" };
+const state = { items: [], active: -1, hidden: new Set(), conf: 0.25, ready: false, hover: null, view: "boxes", zoom: "fit", focus: "all" };
+try { if (localStorage.getItem("bcc.focus") === "wbc") state.focus = "wbc"; } catch {}
+// Whether a detection is drawn: its class isn't hidden, and "White cells" focus shows WBCs only.
+const shown = (d) => !state.hidden.has(d.cls) && (state.focus !== "wbc" || d.cls === "WBC");
 let uid = 0;
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -704,13 +778,15 @@ function paintBoxes(c, W, H, dets, { labels = false, hover = null } = {}) {
   const base = Math.min(W, H), lw = Math.max(1.5, base / 320), fs = Math.max(11, Math.round(base / 50));
   c.font = `700 ${fs}px "Plus Jakarta Sans", -apple-system, "Segoe UI", sans-serif`; c.textBaseline = "top";
   dets.forEach((d, idx) => {
-    if (state.hidden.has(d.cls)) return;
+    if (!shown(d)) return;
     const [x1, y1, x2, y2] = d.box, x = x1 * W, y = y1 * H, w = (x2 - x1) * W, h = (y2 - y1) * H;
     const col = color(d.cls), hov = hover === idx;
     c.globalAlpha = hov ? 0.3 : 0.1; c.fillStyle = col; c.fillRect(x, y, w, h); c.globalAlpha = 1;
     c.lineWidth = hov ? lw * 2.2 : lw; c.strokeStyle = col; c.strokeRect(x, y, w, h);
-    if (labels) {
-      const t = `${CELLS.find((k) => k.key === d.cls).short} ${Math.round(d.conf * 100)}%`;
+    // White cells always get a small type tag (e.g. "NEU") when the classifier ran; labels mode adds certainty.
+    if (labels || d.wbc) {
+      const t = d.wbc ? `${wbcType(d.wbc.type).short}${labels ? ` ${Math.round(d.wbc.conf * 100)}%` : ""}`
+        : `${CELLS.find((k) => k.key === d.cls).short} ${Math.round(d.conf * 100)}%`;
       const tw = c.measureText(t).width + 8, th = fs + 6, ty = y - th < 0 ? y : y - th;
       c.fillStyle = col; c.fillRect(x, ty, tw, th); c.fillStyle = "#fff"; c.fillText(t, x + 4, ty + 3);
     }
@@ -732,7 +808,7 @@ function cellsHTML(n) {
 const strictName = () => STRICT[String(state.conf)] || `custom (${Math.round(state.conf * 100)}%)`;
 const plural = (n, one, many) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 const icon = (id) => `<svg><use href="#${id}"/></svg>`;
-const bigCount = (n) => `<span class="num">${n.toLocaleString()}</span> ${n === 1 ? "cell" : "cells"}`;
+const bigCount = (n, one = "cell", many = "cells") => `<span class="num">${n.toLocaleString()}</span> ${n === 1 ? one : many}`;
 
 function toast(msg, kind = "") {
   const t = document.createElement("div"); t.className = `toast ${kind}`; t.textContent = msg;
@@ -743,11 +819,22 @@ function toast(msg, kind = "") {
 function setStatus(kind, text, title = "") {
   $("status").className = `chip ${kind}`; $("statusText").textContent = text; $("status").title = title;
 }
+function applyWbcInfo(r) {
+  const w = r.wbc_classifier || {};
+  const was = state.wbcReady;
+  state.wbcReady = !!w.ready;
+  state.modelTitle = `Cell counter: ${r.model}` + (w.ready ? ` · White cell types: ${w.model}` : " · White cell types: not available yet")
+    + ` · running on ${r.device.toUpperCase()}`;
+  if (state.wbcReady && was === false) toast("White blood cell typing is now on");
+  if (!state.wbcReady) setTimeout(async () => {     // keep checking until the classifier's weights arrive
+    try { const r2 = await (await fetch("/api/info")).json(); if (r2.ready) { applyWbcInfo(r2); render(); } } catch {}
+  }, 30000);
+}
 async function checkInfo() {
   try {
     const r = await (await fetch("/api/info")).json();
     if (r.ready) {
-      state.ready = true; state.modelTitle = `Model: ${r.model} · running on ${r.device.toUpperCase()}`;
+      state.ready = true; applyWbcInfo(r);
       setStatus("ok", "Ready", state.modelTitle);
       render(); pump();
     } else if (r.error) {
@@ -916,7 +1003,7 @@ function hitTest(e) {
   const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
   let best = null, area = Infinity;
   visible(item).forEach((d, idx) => {
-    if (state.hidden.has(d.cls)) return;
+    if (!shown(d)) return;
     const [x1, y1, x2, y2] = d.box;
     if (px >= x1 && px <= x2 && py >= y1 && py <= y2) { const a = (x2 - x1) * (y2 - y1); if (a < area) { area = a; best = { idx, d }; } }
   });
@@ -927,7 +1014,12 @@ canvas.addEventListener("mousemove", (e) => {
   if (idx !== state.hover) { state.hover = idx; draw(); }
   if (!hit) return void (tip.hidden = true);
   const cell = CELLS.find((k) => k.key === hit.d.cls);
-  tip.textContent = `${cell.name.replace(/s$/, "")} · ${Math.round(hit.d.conf * 100)}% sure`;
+  const w = hit.d.wbc;
+  tip.textContent = w
+    ? `${wbcType(w.type).one} ${Math.round(w.conf * 100)}%` +
+      (w.top?.length > 1 ? ` (then ${w.top.slice(1, 3).map(([k, p]) => `${wbcType(k).one.toLowerCase()} ${Math.round(p * 100)}%`).join(", ")})` : "") +
+      ` · white cell ${Math.round(hit.d.conf * 100)}% sure`
+    : `${cell.name.replace(/s$/, "")} · ${Math.round(hit.d.conf * 100)}% sure`;
   tip.hidden = false;
   tip.style.left = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8) + "px";
   tip.style.top = (e.clientY + 16) + "px";
@@ -952,7 +1044,8 @@ function render() {
   $("welcome").hidden = items.length > 0; $("workspace").hidden = items.length === 0;
   if (entering) scrollTo({ top: 0, behavior: "instant" });
   // controls shared by the photo view and the live view
-  $$(".seg button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.view === state.view));
+  $$(".seg button[data-view]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.view === state.view));
+  $$(".seg button[data-focus]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.focus === state.focus));
   $$(".strict button").forEach((b) => b.setAttribute("aria-pressed", +b.dataset.c === state.conf));
   renderLive();
   if (!items.length) return;
@@ -987,8 +1080,11 @@ function render() {
   // results
   const done = item?.status === "done", n = done ? countsOf(item) : null, vis = done ? visible(item) : [];
   const total = vis.length;
+  const focus = state.focus === "wbc";
   $("summary").innerHTML = !done ? `<span class="muted">${item?.status === "error" ? "No results for this image." : "Results will appear here."}</span>`
-    : total ? `<strong>${bigCount(total)}</strong><span class="muted">found at ${strictName()} strictness</span>`
+    : focus ? (n.WBC ? `<strong>${bigCount(n.WBC, "white cell", "white cells")}</strong><span class="muted">found at ${strictName()} strictness · ${total.toLocaleString()} cells in total</span>`
+      : `<strong>No white cells found</strong><span class="muted">Try <b>Relaxed</b> strictness, or switch to <b>All cells</b> to see the full count.</span>`)
+    : total ?`<strong>${bigCount(total)}</strong><span class="muted">found at ${strictName()} strictness</span>`
     : `<strong>No cells found</strong><span class="muted">Try <b>Relaxed</b> strictness, or check that this is a blood smear image.</span>`;
   $("cells").innerHTML = cellsHTML(n);
   const facts = [];
@@ -998,6 +1094,8 @@ function render() {
   }
   if (total) facts.push(["Average certainty", `${Math.round(vis.reduce((s, d) => s + d.conf, 0) / total * 100)}%`]);
   $("facts").innerHTML = facts.map(([k, v]) => `<div><dt>${k}</dt><dd class="mono">${v}</dd></div>`).join("");
+  const types = done ? wbcTypesHTML(vis, item.result) : "";
+  $("wbcTop").innerHTML = focus ? types : ""; $("wbcTypes").innerHTML = focus ? "" : types;
 
   // strictness
   $("conf").value = state.conf; $("confv").textContent = `${Math.round(state.conf * 100)}%`;
@@ -1062,7 +1160,13 @@ $("tbody").onclick = (e) => { const tr = e.target.closest("tr"); if (tr) { selec
   const b = e.target.closest(".eye"); if (!b) return;
   const k = b.dataset.k; state.hidden.has(k) ? state.hidden.delete(k) : state.hidden.add(k); render();
 });
-$$(".seg button").forEach((b) => b.onclick = () => { state.view = b.dataset.view; render(); });
+$$(".seg button[data-view]").forEach((b) => b.onclick = () => { state.view = b.dataset.view; render(); });
+function setFocus(f) {
+  state.focus = f; state.hover = null;
+  try { localStorage.setItem("bcc.focus", f); } catch {}
+  render();
+}
+$$(".seg button[data-focus]").forEach((b) => b.onclick = () => setFocus(b.dataset.focus));
 $$(".strict").forEach((el) => el.onclick = (e) => { const b = e.target.closest("button"); if (b) { state.conf = +b.dataset.c; render(); } });
 $("conf").oninput = (e) => { state.conf = Math.round(+e.target.value * 100) / 100; render(); };
 $("clear").onclick = () => {
@@ -1079,6 +1183,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "+" || e.key === "=") $("zIn").click();
   if (e.key === "-") $("zOut").click();
   if (e.key === "0") $("zFit").click();
+  if (e.key === "w" || e.key === "W") setFocus(state.focus === "wbc" ? "all" : "wbc");
 });
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => draw());
 addEventListener("resize", () => { if (state.zoom === "fit") renderZoom(); });
@@ -1206,10 +1311,15 @@ async function tick() {
 function renderLive() {
   if ($("live").hidden) return;
   const r = live.last?.result, dets = r ? visibleDets(r) : [], n = r ? countDets(dets) : null;
-  $("liveSummary").innerHTML = r
+  const focus = state.focus === "wbc";
+  $("liveSummary").innerHTML = r && focus
+    ? `<strong>${bigCount(n.WBC, "white cell", "white cells")}</strong><span class="muted">${live.paused ? "in this frozen frame" : "in view right now"} · ${dets.length} cells in total</span>`
+    : r
     ? `<strong>${bigCount(dets.length)}</strong><span class="muted">${live.paused ? "in this frozen frame" : "in view right now"}</span>`
     : `<span class="muted">Counts appear here once the camera is running.</span>`;
   $("liveCells").innerHTML = cellsHTML(n);
+  const types = r ? wbcTypesHTML(dets, r) : "";
+  $("liveWbcTop").innerHTML = focus ? types : ""; $("liveWbcTypes").innerHTML = focus ? "" : types;
   if (live.hist.length >= 3 && !live.paused) {
     const avg = { RBC: 0, WBC: 0, Platelets: 0 };
     live.hist.forEach((h) => { const c = countDets(h.filter((d) => d.conf >= state.conf)); for (const k in avg) avg[k] += c[k] / live.hist.length; });
@@ -1219,8 +1329,12 @@ function renderLive() {
   $("liveFps").textContent = live.paused ? "Paused" : fps ? `${fps.toFixed(1)} counts / sec` : "";
   $("liveRec").classList.toggle("paused", live.paused || !live.stream);
   $("liveBadgeText").textContent = live.paused ? "PAUSED" : "LIVE";
-  $("liveHud").innerHTML = n ? CELLS.filter((c) => !state.hidden.has(c.key)).map((c) =>
-    `<span class="hchip" style="--c:var(${c.v})"><i></i>${c.short} <b>${n[c.key]}</b></span>`).join("") : "";
+  const D = r && focus && r.wbc_classifier ? differential(dets) : null;
+  $("liveHud").innerHTML = !n ? ""
+    : D ? `<span class="hchip" style="--c:var(--wbc)"><i></i>WBC <b>${n.WBC}</b></span>` + WBC_TYPES.filter((t) => D.n[t.key]).map((t) =>
+        `<span class="hchip" style="--c:${t.col}"><i></i>${t.short} <b>${D.n[t.key]}</b></span>`).join("")
+    : CELLS.filter((c) => !state.hidden.has(c.key) && (!focus || c.key === "WBC")).map((c) =>
+        `<span class="hchip" style="--c:var(${c.v})"><i></i>${c.short} <b>${n[c.key]}</b></span>`).join("");
   $("livePause").textContent = live.paused ? "Resume" : "Pause";
   $("livePause").disabled = !live.last && !live.paused;
   $("liveCapture").disabled = !r;
@@ -1245,6 +1359,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeLive();
   else if (e.key === "c" || e.key === "C") $("liveCapture").click();
   else if (e.key === "p" || e.key === "P") $("livePause").click();
+  else if (e.key === "w" || e.key === "W") setFocus(state.focus === "wbc" ? "all" : "wbc");
 });
 addEventListener("pagehide", stopStream);
 
@@ -1255,9 +1370,12 @@ function download(name, blob) {
 }
 const stem = (n) => n.replace(/\.[^.]+$/, "");
 $("csv").onclick = () => {
-  const rows = [["image", "red_blood_cells", "white_blood_cells", "platelets", "total", "strictness", "min_certainty"]];
+  const rows = [["image", "red_blood_cells", "white_blood_cells", "platelets", "total",
+    ...WBC_TYPES.map((t) => `wbc_${t.key}`), "wbc_typed", "strictness", "min_certainty"]];
   state.items.filter((i) => i.status === "done").forEach((it) => {
-    const c = countsOf(it); rows.push([it.name, c.RBC, c.WBC, c.Platelets, c.WBC + c.RBC + c.Platelets, strictName(), state.conf]);
+    const c = countsOf(it), typed = !!it.result.wbc_classifier, D = differential(visible(it));
+    rows.push([it.name, c.RBC, c.WBC, c.Platelets, c.WBC + c.RBC + c.Platelets,
+      ...WBC_TYPES.map((t) => typed ? D.n[t.key] : ""), typed ? D.total : "", strictName(), state.conf]);
   });
   const csv = rows.map((r) => r.map((v) => /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v).join(",")).join("\n");
   download("blood_cell_counts.csv", new Blob([csv], { type: "text/csv" }));
@@ -1266,7 +1384,9 @@ $("csv").onclick = () => {
 $("json").onclick = () => {
   const out = state.items.filter((i) => i.status === "done").map((it) => ({
     image: it.name, width: it.result.width, height: it.result.height, min_certainty: state.conf, counts: countsOf(it),
+    white_cell_types: it.result.wbc_classifier ? differential(visible(it)).n : null,
     cells: visible(it).map((d) => ({ type: d.cls, certainty: d.conf,
+      ...(d.wbc ? { white_cell_type: d.wbc.type, white_cell_type_certainty: d.wbc.conf, white_cell_type_top3: d.wbc.top } : {}),
       box_px: { x1: d.box[0] * it.result.width, y1: d.box[1] * it.result.height, x2: d.box[2] * it.result.width, y2: d.box[3] * it.result.height } })),
   }));
   download("blood_cell_detections.json", new Blob([JSON.stringify(out, null, 2)], { type: "application/json" }));

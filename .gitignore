@@ -20,3 +20,5 @@ dashboard/data.tmp
 runs/
 .DS_Store
 .vscode/
+kaggle/kernel_wbc/kernel-metadata.json
+outputs_wbc_monitor.log
