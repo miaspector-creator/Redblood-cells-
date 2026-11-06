@@ -60,7 +60,16 @@ neutrophil, lymphocyte, monocyte, eosinophil, basophil or immature granulocyte. 
 WBC differential, a type tag on each white cell box, and extra CSV/JSON columns. The app picks the
 weights up automatically (checked every 30 s), so no restart is needed after training finishes.
 
-Research and education use only; it is not a diagnostic device.
+**Guided white cell differential:** in live mode, pick a target (50 / 100 / 200 cells) and press
+*Start counting*, then move the slide slowly. The server measures slide motion between frames
+(OpenCV phase correlation, `/api/scan/frame`), so each white cell gets a fixed slide position and is
+counted once; a cell counts after two sightings and its type is a vote over all of them. The report
+lists each type with a 95% (Wilson) range and typical adult ranges, and exports to CSV or PDF.
+
+> **Disclaimer:** this is a master's research project for education and research only. It is not a
+> medical device. AI can make mistakes, so counts and cell types may be wrong, and nothing it produces
+> is a diagnosis. Always consult a qualified healthcare provider or a certified laboratory for medical
+> advice and an accurate diagnosis.
 
 ## Second model: white blood cell classifier (BloodMNIST)
 

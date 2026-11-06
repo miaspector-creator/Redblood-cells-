@@ -7,6 +7,7 @@ then open http://localhost:8001
 import io
 import ipaddress
 import os
+import re
 import socket
 import threading
 import time
@@ -15,7 +16,7 @@ from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urljoin, urlparse
 
 import requests
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
@@ -245,6 +246,61 @@ async def predict(file: UploadFile = File(...)):
     out = det.predict(_open_image(data))
     out["filename"] = file.filename
     return out
+
+
+# ---------- guided 100-cell differential: slide motion between live frames ----------
+# The browser sends consecutive camera frames with a session id. We measure how far the slide moved
+# since that session's previous frame (phase correlation), so the browser can place every white cell
+# at a fixed slide position and count each cell only once while the user pans.
+SCAN_MOTION_PX = 320          # frames are compared at this size (fast, and plenty for a shift estimate)
+SCAN_TTL_S = 20 * 60
+SCAN_MAX_SESSIONS = 32
+_scan_prev: dict[str, tuple[float, "object"]] = {}   # session id -> (last seen, grayscale frame)
+_scan_lock = threading.Lock()
+_SID_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
+
+
+def _motion(sid: str, img: Image.Image) -> dict:
+    import cv2
+    import numpy as np
+
+    s = min(1.0, SCAN_MOTION_PX / max(img.size))
+    g = np.asarray(img.convert("L").resize((max(8, round(img.width * s)), max(8, round(img.height * s)))), dtype=np.float32)
+    now = time.monotonic()
+    with _scan_lock:
+        for k in [k for k, (t, _) in _scan_prev.items() if now - t > SCAN_TTL_S]:
+            del _scan_prev[k]
+        if len(_scan_prev) >= SCAN_MAX_SESSIONS and sid not in _scan_prev:
+            del _scan_prev[min(_scan_prev, key=lambda k: _scan_prev[k][0])]
+        prev = _scan_prev.get(sid)
+        _scan_prev[sid] = (now, g)
+    if prev is None or prev[1].shape != g.shape:
+        return {"dx": 0.0, "dy": 0.0, "response": None, "reset": True}
+    win = cv2.createHanningWindow((g.shape[1], g.shape[0]), cv2.CV_32F)
+    (dx, dy), resp = cv2.phaseCorrelate(prev[1], g, win)
+    # dx/dy: how far the slide content moved in this frame, in the frame's own pixels
+    return {"dx": round(dx / s, 2), "dy": round(dy / s, 2), "response": round(float(resp), 4), "reset": False}
+
+
+@app.post("/api/scan/frame")
+async def scan_frame(file: UploadFile = File(...), session: str = Form(...)):
+    if not _SID_RE.match(session):
+        raise HTTPException(400, "Bad session id")
+    det = _get_detector()
+    data = await file.read()
+    if len(data) > MAX_BYTES:
+        raise HTTPException(413, "Image is larger than 25 MB")
+    img = _open_image(data)
+    out = det.predict(img)
+    out["motion"] = _motion(session, img)
+    return out
+
+
+@app.post("/api/scan/end")
+async def scan_end(session: str = Form(...)):
+    with _scan_lock:
+        _scan_prev.pop(session, None)
+    return {"ok": True}
 
 
 def _sample_names() -> list[str]:
