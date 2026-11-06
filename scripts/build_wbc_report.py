@@ -81,6 +81,16 @@ def plot_errors(pred_csv, out, n=24):
     return len(wrong)
 
 
+def split_overlap():
+    """Count pixel-identical images shared between splits (a data-leakage sanity check)."""
+    import hashlib
+    hashes = {}
+    for s in ("train", "val", "test"):
+        d = WBC_DATA_DIR / s
+        hashes[s] = {hashlib.md5(Image.open(f).convert("RGB").tobytes()).hexdigest() for f in d.rglob("*.png")} if d.is_dir() else set()
+    return {f"{a}/{b}": len(hashes[a] & hashes[b]) for a, b in (("train", "test"), ("train", "val"), ("val", "test"))}
+
+
 def pct(x):
     return f"{x * 100:.1f}%"
 
@@ -151,7 +161,15 @@ def main(outputs: Path = WBC_OUTPUTS, reports: Path = REPORTS):
     ]
     if n_err:
         lines += ["## Most confident mistakes", "", "![Mistakes](figures/wbc/mistakes.png)", ""]
+    ov = split_overlap()
     lines += [
+        "## Data check",
+        "",
+        "Pixel-identical images shared between splits: "
+        + ", ".join(f"{k} {v}" for k, v in ov.items())
+        + f". With {o['images']:,} test images this is too small to affect the reported accuracy "
+        f"({ov['train/test'] / max(1, o['images']) * 100:.2f}% of the test split).",
+        "",
         "## Limitations",
         "",
         "- BloodMNIST images are centered single cells at 64 × 64 px from one source. Accuracy on cells "

@@ -13,23 +13,17 @@ Status snapshot for picking the work back up later (last updated 2026-11-06).
 | Master's project disclaimer (start page, footer, live view, help, reports, README) | `webapp/`, `README.md` | `843a1d2` |
 | Hugging Face Space deployment files (prepared, **not deployed**) | `deploy/space/`, `scripts/deploy_space.py` | `55991d8` |
 
+| WBC classifier trained on Kaggle T4 (51 epochs, early stop). Test: accuracy 99.0%, macro F1 0.992; weakest: neutrophil vs immature granulocyte | `outputs/wbc_classifier/outputs/wbc_best.pt` (git-ignored), `reports/wbc_classifier_report.md` | tag `wbc-classifier-v1` |
+
 ## In progress
 
-- **WBC classifier training on Kaggle:** kernel `miaspector/bloodmnist-yolo26-cls`, version 2
-  (https://www.kaggle.com/code/miaspector/bloodmnist-yolo26-cls). When it finishes, run:
-
-  ```bash
-  .venv/bin/python scripts/monitor_wbc.py
-  ```
-
-  This downloads outputs to `outputs/wbc_classifier/` (weights `wbc_best.pt`) and writes
-  `reports/wbc_classifier_report.md`. The web app loads the classifier automatically.
-  Then: review per-class results, commit the report, tag `wbc-classifier-v1`.
-
-- **GitHub Release for the detector:** files ready in `outputs/release/` (git-ignored). Create it at
+- **GitHub Releases:** files ready in `outputs/release/` (git-ignored). Create it at
   https://github.com/miaspector-creator/Redblood-cells-/releases/new?tag=detector-v1 and attach
   `detector-v1_yolo26s_txl-pbc.pt`, using `detector-v1_release_notes.md` as the description.
-  Make a matching `wbc-classifier-v1` release once the classifier is trained.
+  Same for the classifier at https://github.com/miaspector-creator/Redblood-cells-/releases/new?tag=wbc-classifier-v1
+  with `wbc-classifier-v1_yolo26s-cls_bloodmnist.pt` and `wbc-classifier-v1_release_notes.md`.
+- **Real-microscope check:** classifier accuracy on cells cropped from smears (TXL-PBC, own microscope)
+  is not measured; differently stained slides are least reliable.
 
 ## On hold / ideas
 
