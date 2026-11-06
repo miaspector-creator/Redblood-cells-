@@ -1,0 +1,6 @@
+ultralytics>=8.4
+fastapi>=0.115
+uvicorn[standard]
+python-multipart
+pi-heif
+requests

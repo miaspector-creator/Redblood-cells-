@@ -32,6 +32,29 @@ cp .env.example .env               # add your Kaggle API token
 .venv/bin/python -m http.server 8000         # then open http://localhost:8000/dashboard/
 ```
 
+## Web app (use the trained model)
+
+`webapp/` is a local web app. Add smear images by uploading from your computer, drag and
+drop (including straight from another browser tab), pasting, or pasting an image link
+(the server downloads it; links to private/local network addresses are refused). Sample
+smears from the TXL-PBC test split can be downloaded from the page. For each image you get WBC / RBC / Platelet boxes,
+counts, WBC-per-1,000-RBC, a live confidence slider, and CSV / JSON / annotated-PNG export.
+It needs the trained weights at `outputs/runs/txl_pbc/weights/best.pt` (or set
+`BLOODCELL_MODEL=/path/to/best.pt`) and runs on Apple GPU (MPS), CUDA or CPU.
+
+```bash
+.venv/bin/pip install -r webapp/requirements.txt
+.venv/bin/python -m uvicorn webapp.app:app --port 8001   # then open http://localhost:8001
+```
+
+**Live camera:** press *Live camera* to count straight from a microscope camera (USB camera,
+HDMI capture adapter, or a phone on an eyepiece adapter that shows up as a webcam). Frames are
+analyzed about 9–10 times a second; *Pause* freezes a frame and *Capture* saves it with its counts.
+Browsers only allow camera access on `localhost` or `https://`, so open the app on the computer the
+camera is plugged into.
+
+Research and education use only; it is not a diagnostic device.
+
 Training settings (model, epochs, image size, batch, patience) are at the top of
 `kaggle/kernel/train.py`. The held-out `test` split is used only for the final evaluation
 of the best checkpoint; model selection uses `val`.

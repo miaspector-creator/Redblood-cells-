@@ -1,0 +1,1285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blood Cell Counter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23d6336c'/%3E%3Ccircle cx='8' cy='8' r='2.5' fill='%23fff' opacity='.5'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f6f5f2; --panel: #ffffff; --panel-2: #faf9f7; --ink: #1c1917; --muted: #6b645e; --line: #e7e3de;
+    --accent: #b42318; --accent-hover: #951c12; --accent-soft: #fdeceb; --accent-ink: #ffffff; --focus: #2f6fed;
+    --rbc: #d6336c; --wbc: #7048e8; --plt: #d97706;
+    --ok: #2b8a3e; --warn: #b26a00; --err: #c92a2a;
+    --shadow: 0 1px 2px rgba(28,25,23,.05), 0 6px 20px rgba(28,25,23,.06);
+    --r: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141312; --panel: #1e1c1b; --panel-2: #252321; --ink: #eeece9; --muted: #a39d97; --line: #353230;
+      --accent: #f0605a; --accent-hover: #ff7a74; --accent-soft: #3a1f1d; --accent-ink: #1a0a09; --focus: #7aa2ff;
+      --rbc: #f06595; --wbc: #9775fa; --plt: #fcb14b;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased; }
+  [hidden] { display: none !important; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .mono { font-variant-numeric: tabular-nums; }
+  .muted { color: var(--muted); }
+
+  /* ---------- header ---------- */
+  header { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px;
+    padding: 12px 24px; background: color-mix(in srgb, var(--panel) 88%, transparent);
+    backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 17px; color: inherit;
+    text-decoration: none; background: none; border: 0; padding: 0; cursor: pointer; }
+  .brand svg { width: 28px; height: 28px; }
+  .spacer { flex: 1; }
+  .chip { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; padding: 5px 11px;
+    border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); }
+  .chip.ok .dot { background: var(--ok); } .chip.err .dot { background: var(--err); }
+  .chip.busy .dot { animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .3; } }
+
+  /* ---------- buttons ---------- */
+  .btn { font: inherit; font-size: 14px; font-weight: 550; display: inline-flex; align-items: center; justify-content: center;
+    gap: 7px; min-height: 38px; padding: 7px 14px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--ink); cursor: pointer; text-decoration: none; white-space: nowrap;
+    transition: background .15s, border-color .15s, color .15s; }
+  .btn:hover:not(:disabled) { border-color: color-mix(in srgb, var(--ink) 30%, var(--line)); background: var(--panel-2); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+  .btn.ghost { background: transparent; border-color: transparent; }
+  .btn.ghost:hover:not(:disabled) { background: var(--panel-2); border-color: var(--line); }
+  .btn.lg { min-height: 46px; padding: 10px 20px; font-size: 15px; border-radius: 12px; }
+  .btn.sm { min-height: 32px; padding: 4px 10px; font-size: 13px; }
+  .btn.icon { width: 36px; padding: 0; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn svg { width: 17px; height: 17px; flex: none; }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); }
+  .pad { padding: 18px; }
+  h2.label { font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 12px; }
+
+  /* ---------- welcome ---------- */
+  #welcome { max-width: 880px; margin: 0 auto; padding: 48px 24px 32px; }
+  .hero { text-align: center; margin-bottom: 28px; }
+  .hero h1 { font-size: clamp(28px, 4vw, 38px); line-height: 1.15; margin: 0 0 10px; letter-spacing: -.02em; }
+  .hero p { color: var(--muted); font-size: 17px; margin: 0 auto; max-width: 560px; }
+  .legend { display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; margin-top: 16px; font-size: 14px; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .sw { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+
+  #drop { display: block; text-align: center; padding: 40px 20px; border: 2px dashed var(--line); border-radius: var(--r);
+    background: var(--panel-2); cursor: pointer; transition: border-color .15s, background .15s; }
+  #drop:hover, #drop.over { border-color: var(--accent); background: var(--accent-soft); }
+  #drop .big { font-size: 18px; font-weight: 600; margin: 12px 0 4px; }
+  #drop .icon-circle { width: 56px; height: 56px; margin: 0 auto; border-radius: 50%; display: grid; place-items: center;
+    background: var(--accent-soft); color: var(--accent); }
+  #drop .icon-circle svg { width: 26px; height: 26px; }
+  #drop .formats { font-size: 13px; color: var(--muted); margin-top: 14px; }
+  .or { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 13px; margin: 18px 0 12px; }
+  .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .urlrow { display: flex; gap: 8px; }
+  .urlrow input { flex: 1; min-width: 0; font: inherit; font-size: 14px; padding: 9px 12px; min-height: 42px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+  .urlrow input::placeholder { color: var(--muted); }
+  .urlrow input:focus { outline: 2px solid var(--focus); outline-offset: -1px; border-color: transparent; }
+  .field-error { color: var(--err); font-size: 13px; margin: 8px 0 0; }
+
+  .samples-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 30px 0 10px; flex-wrap: wrap; }
+  .samples-head h2 { margin: 0; font-size: 16px; }
+  .samples { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 640px) { .samples { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .sample { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: var(--panel-2); }
+  .sample button.pick { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: pointer; }
+  .sample img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; transition: transform .2s; }
+  .sample button.pick:hover img { transform: scale(1.05); }
+  .sample .pick-label { position: absolute; inset: auto 0 0 0; padding: 18px 8px 6px; font-size: 12px; font-weight: 600; color: #fff;
+    background: linear-gradient(transparent, rgba(0,0,0,.6)); opacity: 0; transition: opacity .15s; text-align: left; pointer-events: none; }
+  .sample:hover .pick-label, .sample:focus-within .pick-label { opacity: 1; }
+  .sample a.save { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center;
+    background: rgba(0,0,0,.55); color: #fff; }
+  .sample a.save:hover { background: var(--accent); }
+  .sample a.save svg { width: 15px; height: 15px; }
+
+  .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 34px; }
+  @media (max-width: 640px) { .steps { grid-template-columns: minmax(0, 1fr); } }
+  .step { padding: 16px; }
+  .step b { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--accent-soft);
+    color: var(--accent); font-size: 13px; margin-bottom: 8px; }
+  .step h3 { margin: 0 0 4px; font-size: 15px; }
+  .step p { margin: 0; font-size: 13.5px; color: var(--muted); }
+
+  /* ---------- workspace ---------- */
+  #workspace { padding: 20px 24px 32px; max-width: 1440px; margin: 0 auto; }
+  .ws-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+  @media (max-width: 980px) { .ws-grid { grid-template-columns: minmax(0, 1fr); } }
+  .side { display: grid; gap: 16px; position: sticky; top: 76px; }
+  @media (max-width: 980px) { .side { position: static; } }
+
+  .viewer-bar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .viewer-title { min-width: 0; flex: 1; }
+  .viewer-title .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  .viewer-title .sub { font-size: 12.5px; color: var(--muted); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel-2); }
+  .seg button { font: inherit; font-size: 13px; border: 0; background: none; color: var(--ink); padding: 6px 11px; min-height: 34px; cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { background: var(--panel); font-weight: 600; box-shadow: inset 0 -2px 0 var(--accent); }
+  .seg button:hover:not([aria-pressed="true"]) { background: var(--panel); }
+  .zoom { display: inline-flex; align-items: center; gap: 2px; }
+  .zoom .lvl { min-width: 48px; text-align: center; font-size: 13px; color: var(--muted); }
+
+  #stage { position: relative; background: repeating-conic-gradient(var(--panel-2) 0 25%, var(--panel) 0 50%) 0 0 / 20px 20px;
+    border-radius: 0 0 var(--r) var(--r); overflow: auto; min-height: 420px; max-height: calc(100vh - 210px);
+    display: grid; place-items: center; }
+  #stage.zoomed { place-items: start; }
+  #canvas { display: block; max-width: 100%; max-height: calc(100vh - 230px); cursor: crosshair; margin: 10px; }
+  #stage.zoomed #canvas { max-width: none; max-height: none; }
+  .overlay { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px;
+    background: color-mix(in srgb, var(--panel) 75%, transparent); backdrop-filter: blur(2px); }
+  .overlay .box { max-width: 360px; }
+  .overlay h3 { margin: 12px 0 4px; font-size: 16px; }
+  .overlay p { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
+  .spinner { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--accent);
+    margin: 0 auto; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #tip { position: fixed; z-index: 30; pointer-events: none; background: var(--ink); color: var(--panel); font-size: 12.5px;
+    padding: 4px 8px; border-radius: 6px; white-space: nowrap; }
+
+  /* results */
+  .summary { font-size: 15px; margin: 0 0 14px; }
+  .summary strong { font-size: 26px; display: block; line-height: 1.15; letter-spacing: -.01em; }
+  .cells { display: grid; gap: 8px; }
+  .cell { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 10px; padding: 10px 10px 10px 12px;
+    border-radius: 12px; background: var(--panel-2); border: 1px solid transparent; }
+  .cell .sw { width: 12px; height: 12px; }
+  .cell .nm { line-height: 1.2; }
+  .cell .nm small { display: block; color: var(--muted); font-size: 12px; }
+  .cell .n { font-size: 24px; font-weight: 650; }
+  .cell.off { opacity: .5; }
+  .cell.off .n { text-decoration: line-through; text-decoration-thickness: 2px; }
+  .eye { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--muted);
+    display: grid; place-items: center; cursor: pointer; }
+  .eye:hover { color: var(--ink); }
+  .eye svg { width: 16px; height: 16px; }
+  .facts { margin: 14px 0 0; display: grid; gap: 6px; font-size: 13.5px; }
+  .facts div { display: flex; justify-content: space-between; gap: 10px; }
+  .facts dt { color: var(--muted); margin: 0; }
+  .facts dd { margin: 0; font-weight: 600; text-align: right; }
+  .hint { font-size: 12.5px; color: var(--muted); margin: 10px 0 0; }
+
+  .strict { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .strict button { font: inherit; font-size: 13.5px; font-weight: 550; padding: 9px 6px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--panel-2); color: var(--ink); cursor: pointer; }
+  .strict button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+  details.fine { margin-top: 10px; font-size: 13px; }
+  details.fine summary { cursor: pointer; color: var(--muted); }
+  .range-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .range-row input { flex: 1; accent-color: var(--accent); }
+  .dl { display: grid; gap: 8px; }
+  .dl .btn { justify-content: flex-start; }
+
+  /* image strip */
+  .strip-wrap { margin-top: 20px; }
+  .strip-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .strip-head h2 { margin: 0 8px 0 0; font-size: 16px; }
+  .strip { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 8px; }
+  .thumb { position: relative; flex: none; width: 128px; border-radius: 12px; border: 2px solid var(--line); background: var(--panel);
+    cursor: pointer; overflow: hidden; text-align: left; }
+  .thumb.active { border-color: var(--accent); }
+  .thumb img, .thumb .ph { display: block; width: 100%; height: 88px; object-fit: cover; background: var(--panel-2); }
+  .thumb .meta { padding: 6px 8px; font-size: 12px; }
+  .thumb .meta .t { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 550; }
+  .thumb .meta .s { color: var(--muted); }
+  .thumb .meta .s.err { color: var(--err); }
+  .thumb .rm { position: absolute; top: 5px; right: 5px; width: 24px; height: 24px; border-radius: 7px; border: 0;
+    background: rgba(0,0,0,.55); color: #fff; cursor: pointer; display: grid; place-items: center; opacity: 0; transition: opacity .15s; }
+  .thumb:hover .rm, .thumb:focus-within .rm { opacity: 1; }
+  @media (hover: none) { .thumb .rm { opacity: 1; } }
+  .thumb .rm svg { width: 13px; height: 13px; }
+  .thumb.add { display: grid; place-items: center; border-style: dashed; color: var(--muted); font-size: 13px; font-weight: 550;
+    min-height: 128px; background: var(--panel-2); font-family: inherit; }
+  .thumb.add:hover { border-color: var(--accent); color: var(--accent); }
+  .thumb.add svg { width: 22px; height: 22px; display: block; margin: 0 auto 4px; }
+  .mini-spin { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--line);
+    border-top-color: var(--accent); animation: spin .8s linear infinite; vertical-align: -1px; margin-right: 4px; }
+  #linkPop { margin-bottom: 12px; padding: 12px; }
+
+  /* table */
+  .table-card { margin-top: 20px; }
+  .table-card summary { cursor: pointer; padding: 16px 18px; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 8px; }
+  .table-card summary::-webkit-details-marker { display: none; }
+  .table-card summary .chev { transition: transform .15s; width: 16px; height: 16px; }
+  .table-card[open] summary .chev { transform: rotate(90deg); }
+  .tablewrap { overflow-x: auto; padding: 0 18px 18px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+  th:first-child, td:first-child { text-align: left; }
+  td:first-child { max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+  tbody tr { cursor: pointer; } tbody tr:hover { background: var(--panel-2); }
+  tfoot td { font-weight: 650; border-bottom: 0; }
+
+  /* misc */
+  #dropOverlay { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; pointer-events: none;
+    background: color-mix(in srgb, var(--accent) 12%, transparent); border: 3px dashed var(--accent); }
+  #dropOverlay div { background: var(--panel); padding: 18px 26px; border-radius: 14px; box-shadow: var(--shadow); font-weight: 600; font-size: 17px; }
+  #toasts { position: fixed; z-index: 60; bottom: 20px; left: 50%; transform: translateX(-50%); display: grid; gap: 8px;
+    width: min(460px, calc(100vw - 32px)); }
+  .toast { background: var(--ink); color: var(--panel); padding: 11px 14px; border-radius: 12px; font-size: 14px; box-shadow: var(--shadow);
+    animation: up .2s ease-out; }
+  .toast.err { background: var(--err); color: #fff; }
+  @keyframes up { from { transform: translateY(8px); opacity: 0; } }
+  footer { text-align: center; font-size: 12.5px; color: var(--muted); padding: 8px 24px 32px; max-width: 760px; margin: 0 auto; }
+
+  dialog { border: 1px solid var(--line); border-radius: 16px; padding: 0; max-width: 560px; width: calc(100vw - 32px);
+    background: var(--panel); color: var(--ink); box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+  dialog::backdrop { background: rgba(0,0,0,.4); }
+  dialog .dh { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+  dialog .dh h2 { margin: 0; font-size: 18px; }
+  dialog .db { padding: 6px 20px 20px; font-size: 14.5px; }
+  dialog .db h3 { font-size: 14px; margin: 16px 0 6px; }
+  dialog .db p, dialog .db ul { margin: 0 0 8px; color: var(--muted); }
+  dialog .db ul { padding-left: 18px; }
+  dialog .db li { margin-bottom: 4px; }
+  dialog .db b { color: var(--ink); font-weight: 600; }
+
+  /* live camera */
+  #live { position: fixed; inset: 0; z-index: 40; background: var(--bg); display: flex; flex-direction: column; }
+  .live-bar { display: flex; align-items: center; gap: 10px; padding: 10px 20px; border-bottom: 1px solid var(--line);
+    background: var(--panel); flex-wrap: wrap; }
+  .live-title { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+  .live-title b { font-size: 16px; }
+  .rec { width: 10px; height: 10px; border-radius: 50%; background: var(--err); flex: none; animation: pulse 1.4s ease-in-out infinite; }
+  .rec.paused { animation: none; background: var(--muted); }
+  select.cam { font: inherit; font-size: 14px; min-height: 36px; padding: 4px 10px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--ink); max-width: 280px; min-width: 0; }
+  .live-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; padding: 16px 20px; }
+  .live-stage { position: relative; background: #000; border-radius: var(--r); overflow: hidden; min-height: 300px; }
+  #liveCanvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .live-stage .overlay { background: rgba(0,0,0,.72); color: #fff; }
+  .live-stage .overlay p { color: rgba(255,255,255,.75); }
+  .live-stage .overlay .spinner { border-color: rgba(255,255,255,.25); border-top-color: #fff; }
+  .live-side { overflow: auto; display: grid; gap: 16px; align-content: start; }
+  .tips { margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--muted); }
+  .tips li { margin-bottom: 6px; } .tips b { color: var(--ink); font-weight: 600; }
+  .live-stage.flash::after { content: ""; position: absolute; inset: 0; background: #fff; animation: flash .4s ease-out forwards; pointer-events: none; }
+  @keyframes flash { from { opacity: .7; } to { opacity: 0; } }
+  @media (max-width: 980px) {
+    #live { overflow: auto; } .live-grid { grid-template-columns: minmax(0, 1fr); flex: none; }
+    .live-stage { aspect-ratio: 4 / 3; min-height: 0; max-height: 70vh; } .live-side { overflow: visible; }
+  }
+
+  @media (max-width: 600px) {
+    .live-bar { padding: 10px 16px; } .live-grid { padding: 12px 16px; }
+    .live-title { flex-basis: 100%; } select.cam { flex-basis: 100%; max-width: none; }
+    .live-bar .seg { flex: 1; } .live-bar .seg button { flex: 1; padding: 6px 4px; }
+    header { padding: 10px 16px; } #welcome { padding: 28px 16px 24px; } #workspace { padding: 14px 16px 24px; }
+    .hide-sm { display: none !important; } #stage { min-height: 300px; }
+    .viewer-title { flex-basis: 100%; }
+    .viewer-bar .seg { flex: 1; } .viewer-bar .seg button { flex: 1; padding: 6px 4px; }
+  }
+
+  /* ================= visual refresh (fonts, color, depth) ================= */
+  :root {
+    --font: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-num: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --bg: #f4f3f8; --panel: #ffffff; --panel-2: #f7f6fa; --ink: #17151f; --muted: #686475; --line: #e5e2ec;
+    --accent: #c8243f; --accent-hover: #a91c34; --accent-soft: #fdebef;
+    --shadow: 0 1px 2px rgba(23,21,31,.04), 0 10px 28px -8px rgba(23,21,31,.10);
+    --shadow-lg: 0 2px 4px rgba(23,21,31,.05), 0 28px 56px -16px rgba(23,21,31,.20);
+    --r: 18px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f0e14; --panel: #17161e; --panel-2: #1f1e28; --ink: #efedf5; --muted: #a29eb0; --line: #2b2936;
+      --accent: #ff5a6e; --accent-hover: #ff7889; --accent-soft: #3a1820; --accent-ink: #1c0509;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -8px rgba(0,0,0,.5);
+      --shadow-lg: 0 2px 4px rgba(0,0,0,.4), 0 28px 56px -16px rgba(0,0,0,.7);
+    }
+  }
+  body { font-family: var(--font); font-size: 15px; letter-spacing: -.005em;
+    background:
+      radial-gradient(800px 380px at 12% -140px, color-mix(in srgb, var(--rbc) 14%, transparent), transparent 70%),
+      radial-gradient(800px 380px at 88% -140px, color-mix(in srgb, var(--wbc) 14%, transparent), transparent 70%),
+      var(--bg);
+    background-repeat: no-repeat; }
+  .mono, .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+  h1, h2, h3, .brand { letter-spacing: -.02em; }
+
+  header { background: color-mix(in srgb, var(--panel) 72%, transparent); backdrop-filter: saturate(1.4) blur(14px);
+    border-bottom-color: color-mix(in srgb, var(--line) 70%, transparent); }
+  .brand { font-weight: 800; font-size: 17px; }
+  .brand svg { width: 30px; height: 30px; filter: drop-shadow(0 2px 6px color-mix(in srgb, var(--rbc) 35%, transparent)); }
+  .chip { font-weight: 600; font-size: 12.5px; background: var(--panel); }
+
+  .btn { font-weight: 600; border-radius: 11px; transition: background .15s, border-color .15s, color .15s, transform .08s, box-shadow .15s; }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .btn.primary { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 86%, #fff), var(--accent));
+    box-shadow: 0 1px 2px rgba(0,0,0,.12), 0 6px 16px -4px color-mix(in srgb, var(--accent) 55%, transparent); }
+  .btn.primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .btn.lg { border-radius: 13px; font-weight: 700; }
+
+  .card { border-color: color-mix(in srgb, var(--line) 80%, transparent); }
+  .pad { padding: 20px; }
+  h2.label { font-size: 11.5px; font-weight: 700; letter-spacing: .09em; }
+
+  /* hero */
+  .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; border-radius: 999px; margin-bottom: 18px;
+    font-size: 12.5px; font-weight: 700; color: var(--accent); background: var(--accent-soft);
+    border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); }
+  .eyebrow i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .hero h1 { font-size: clamp(32px, 5.2vw, 50px); font-weight: 800; letter-spacing: -.04em; line-height: 1.05; margin-bottom: 14px; }
+  .grad { background: linear-gradient(90deg, var(--rbc), var(--wbc) 70%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p { font-size: 17.5px; line-height: 1.55; }
+  .legend { gap: 10px; margin-top: 22px; }
+  .legend span { padding: 6px 13px 6px 10px; border-radius: 999px; font-weight: 600; font-size: 13.5px;
+    background: color-mix(in srgb, var(--c) 9%, var(--panel)); border: 1px solid color-mix(in srgb, var(--c) 24%, transparent); }
+  .legend .sw { width: 9px; height: 9px; border-radius: 50%; }
+
+  #welcome > .card { box-shadow: var(--shadow-lg); }
+  #drop { background: linear-gradient(180deg, var(--panel-2), var(--panel)); border-color: color-mix(in srgb, var(--ink) 14%, var(--line)); }
+  #drop .icon-circle { width: 60px; height: 60px; color: #fff; background: linear-gradient(135deg, var(--rbc), var(--wbc));
+    box-shadow: 0 10px 24px -8px color-mix(in srgb, var(--wbc) 60%, transparent); }
+  #drop .big { font-size: 19px; font-weight: 700; }
+  .samples-head h2 { font-weight: 700; }
+  .sample { border-radius: 14px; box-shadow: var(--shadow); transition: transform .15s, box-shadow .15s; }
+  .sample:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .step b { background: linear-gradient(135deg, var(--rbc), var(--wbc)); color: #fff; }
+  .step h3 { font-weight: 700; }
+
+  /* results */
+  .summary strong { font-size: 34px; font-weight: 800; letter-spacing: -.03em; }
+  .summary strong .num { font-weight: 700; }
+  .cell { background: color-mix(in srgb, var(--c) 7%, var(--panel)); border-color: color-mix(in srgb, var(--c) 18%, transparent);
+    padding: 11px 10px 11px 12px; }
+  .cell .sw { width: 6px; height: 30px; border-radius: 4px; }
+  .cell .nm { font-weight: 600; }
+  .cell .nm small { font-weight: 500; }
+  .cell .n { font-family: var(--font-num); font-size: 26px; font-weight: 700; color: color-mix(in srgb, var(--c) 75%, var(--ink)); }
+  .eye { border-radius: 10px; background: var(--panel); }
+  .facts dd { font-family: var(--font-num); font-size: 13px; }
+  .strict { background: var(--panel-2); border: 1px solid var(--line); border-radius: 13px; padding: 4px; gap: 4px; }
+  .strict button { border: 0; background: transparent; border-radius: 9px; font-weight: 600; color: var(--muted); }
+  .strict button:hover { color: var(--ink); }
+  .strict button[aria-pressed="true"] { background: var(--panel); color: var(--accent); box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 2px 8px -2px rgba(0,0,0,.12); }
+  .seg { border-radius: 11px; padding: 3px; gap: 2px; border-color: var(--line); }
+  .seg button { border-radius: 8px; font-weight: 600; color: var(--muted); }
+  .seg button + button { border-left: 0; }
+  .seg button[aria-pressed="true"] { box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 2px 6px -2px rgba(0,0,0,.12); color: var(--ink); }
+  .viewer-title .name { font-weight: 700; }
+  #stage { border-radius: 0 0 var(--r) var(--r); }
+  .thumb { border-radius: 14px; transition: transform .15s, box-shadow .15s, border-color .15s; }
+  .thumb:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+  .thumb.active { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .strip-head h2 { font-weight: 700; }
+  .toast { border-radius: 14px; font-weight: 600; }
+
+  /* live camera: always a dark, immersive "lab" look */
+  #live { color-scheme: dark;
+    --bg: #0b0a10; --panel: #15141c; --panel-2: #1d1c26; --ink: #f1eff7; --muted: #9b97aa; --line: #2a2834;
+    --accent: #ff5a6e; --accent-hover: #ff7889; --accent-soft: #3a1820; --accent-ink: #1c0509;
+    --rbc: #f06595; --wbc: #9775fa; --plt: #fcb14b;
+    --shadow: 0 1px 2px rgba(0,0,0,.5), 0 10px 28px -8px rgba(0,0,0,.6);
+    background: radial-gradient(900px 500px at 30% 0%, rgba(151,117,250,.10), transparent 70%), var(--bg); color: var(--ink); }
+  .live-bar { background: rgba(21,20,28,.75); backdrop-filter: blur(14px); border-bottom-color: var(--line); }
+  .live-title b { font-weight: 800; font-size: 16px; }
+  .live-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 7px;
+    font-size: 11px; font-weight: 800; letter-spacing: .12em; background: #e5383b; color: #fff;
+    box-shadow: 0 0 0 4px rgba(229,56,59,.18); }
+  .live-badge i { width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: pulse 1.2s ease-in-out infinite; }
+  .live-badge.paused { background: #3a3846; box-shadow: none; }
+  .live-badge.paused i { animation: none; opacity: .6; }
+  .live-stage { border-radius: 22px; box-shadow: 0 0 0 1px rgba(255,255,255,.07), 0 30px 70px -24px rgba(0,0,0,.8); }
+  .hud { position: absolute; left: 14px; right: 14px; bottom: 14px; display: flex; gap: 8px; flex-wrap: wrap; pointer-events: none; }
+  .hchip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 12px; font-size: 13px; font-weight: 600;
+    background: rgba(11,10,16,.62); backdrop-filter: blur(10px); color: #fff; border: 1px solid rgba(255,255,255,.1); }
+  .hchip i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); }
+  .hchip b { font-family: var(--font-num); font-size: 17px; font-weight: 700; }
+  .vf { position: absolute; inset: 14px; pointer-events: none; opacity: .55;
+    background:
+      linear-gradient(#fff, #fff) top left / 22px 2px, linear-gradient(#fff, #fff) top left / 2px 22px,
+      linear-gradient(#fff, #fff) top right / 22px 2px, linear-gradient(#fff, #fff) top right / 2px 22px,
+      linear-gradient(#fff, #fff) bottom left / 22px 2px, linear-gradient(#fff, #fff) bottom left / 2px 22px,
+      linear-gradient(#fff, #fff) bottom right / 22px 2px, linear-gradient(#fff, #fff) bottom right / 2px 22px;
+    background-repeat: no-repeat; }
+  #live .card { background: color-mix(in srgb, var(--panel) 88%, transparent); }
+  #liveCapture { min-height: 54px; font-size: 16px; }
+  @media (max-width: 600px) { .hchip { padding: 5px 9px; font-size: 12px; } .hchip b { font-size: 15px; } .vf { display: none; } }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5"/><path d="M4 20h16"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.6 10.6 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-2.6 3.4M6.6 6.6C3.7 8.4 2 12 2 12s3.5 7 10 7a9.9 9.9 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l5-3v10l-5-3z"/><rect x="2" y="6" width="13" height="12" rx="2"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></symbol>
+</svg>
+
+<header>
+  <button class="brand" id="home" title="Start over">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="13" cy="15" r="10" fill="var(--rbc)" opacity=".9"/><circle cx="13" cy="15" r="4" fill="#fff" opacity=".35"/><circle cx="24" cy="23" r="6" fill="var(--wbc)"/><circle cx="25" cy="8" r="2.5" fill="var(--plt)"/></svg>
+    Blood Cell Counter
+  </button>
+  <span class="spacer"></span>
+  <span id="status" class="chip busy" role="status"><span class="dot"></span><span id="statusText">Starting up…</span></span>
+  <button class="btn sm" data-live-open><svg><use href="#i-camera"/></svg><span class="hide-sm">Live camera</span></button>
+  <button class="btn ghost sm" id="helpBtn"><svg><use href="#i-help"/></svg><span class="hide-sm">How it works</span></button>
+</header>
+
+<!-- ================= WELCOME (no images yet) ================= -->
+<main id="welcome">
+  <div class="hero">
+    <span class="eyebrow"><i></i>AI cell counting for blood smears</span>
+    <h1>Count <span class="grad">blood cells</span><br>in seconds</h1>
+    <p>Add a microscope photo of a blood smear, or point a microscope camera at one. The AI marks every cell it finds and counts them for you.</p>
+    <div class="legend">
+      <span style="--c:var(--rbc)"><i class="sw" style="background:var(--rbc)"></i>Red blood cells</span>
+      <span style="--c:var(--wbc)"><i class="sw" style="background:var(--wbc)"></i>White blood cells</span>
+      <span style="--c:var(--plt)"><i class="sw" style="background:var(--plt)"></i>Platelets</span>
+    </div>
+  </div>
+
+  <div class="card pad">
+    <label id="drop" for="file" tabindex="0" role="button" aria-label="Choose images from your computer, or drag them here">
+      <div class="icon-circle"><svg><use href="#i-upload"/></svg></div>
+      <div class="big">Drag an image here</div>
+      <div class="muted">or</div>
+      <span class="btn primary lg" style="margin-top:10px" aria-hidden="true">Choose from your computer</span>
+      <div class="formats">PNG, JPEG, TIFF, BMP, WebP or HEIC · up to 25 MB · you can pick several</div>
+    </label>
+    <input id="file" type="file" accept="image/*,.tif,.tiff,.heic" multiple hidden>
+
+    <div class="or">or paste a link to an image online</div>
+    <form class="urlrow" data-url-form>
+      <input type="url" placeholder="https://example.com/blood-smear.jpg" aria-label="Image link" required>
+      <button class="btn" type="submit"><svg><use href="#i-link"/></svg>Load</button>
+    </form>
+    <p class="field-error" data-url-err hidden></p>
+
+    <div class="or">or count live from a microscope camera</div>
+    <button class="btn lg" data-live-open style="width:100%"><svg><use href="#i-camera"/></svg>Start live camera</button>
+  </div>
+
+  <div id="samplesBlock" hidden>
+    <div class="samples-head">
+      <h2>No image handy? Try a sample</h2>
+      <span class="muted" style="font-size:13px">Click to analyze · <svg style="width:13px;height:13px;vertical-align:-2px"><use href="#i-download"/></svg> to save it</span>
+    </div>
+    <div class="samples" id="samples"></div>
+  </div>
+
+  <div class="steps">
+    <div class="card step"><b>1</b><h3>Add an image</h3><p>Upload, drag in, paste, or link to a blood smear photo.</p></div>
+    <div class="card step"><b>2</b><h3>Check the marked cells</h3><p>Each cell gets a colored box. Hover a box to see how sure the AI is.</p></div>
+    <div class="card step"><b>3</b><h3>Download your counts</h3><p>Save a spreadsheet of counts or the marked-up image.</p></div>
+  </div>
+</main>
+
+<!-- ================= WORKSPACE (images added) ================= -->
+<main id="workspace" hidden>
+  <div class="ws-grid">
+    <section class="card" aria-label="Image viewer">
+      <div class="viewer-bar">
+        <div class="viewer-title"><span class="name" id="vName"></span><span class="sub" id="vSub"></span></div>
+        <div class="seg" role="group" aria-label="How to show cells">
+          <button data-view="boxes" aria-pressed="true">Boxes</button>
+          <button data-view="labels" aria-pressed="false" title="Boxes with cell type and certainty">Labels</button>
+          <button data-view="none" aria-pressed="false">Original</button>
+        </div>
+        <div class="zoom" role="group" aria-label="Zoom">
+          <button class="btn ghost icon sm" id="zOut" title="Zoom out" aria-label="Zoom out">−</button>
+          <button class="btn ghost sm lvl" id="zFit" title="Fit to window">Fit</button>
+          <button class="btn ghost icon sm" id="zIn" title="Zoom in" aria-label="Zoom in">+</button>
+        </div>
+      </div>
+      <div id="stage">
+        <canvas id="canvas" hidden></canvas>
+        <div class="overlay" id="ovl" hidden><div class="box" id="ovlBox"></div></div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="card pad" aria-label="Results">
+        <h2 class="label">Results</h2>
+        <p class="summary" id="summary"></p>
+        <div class="cells" id="cells"></div>
+        <dl class="facts" id="facts"></dl>
+      </section>
+
+      <section class="card pad" aria-label="Detection strictness">
+        <h2 class="label">How strict should counting be?</h2>
+        <div class="strict" id="strict">
+          <button data-c="0.15">Relaxed</button>
+          <button data-c="0.25">Balanced</button>
+          <button data-c="0.5">Strict</button>
+        </div>
+        <p class="hint" id="strictHint"></p>
+        <details class="fine">
+          <summary>Fine-tune</summary>
+          <div class="range-row">
+            <input id="conf" type="range" min="0.05" max="0.95" step="0.01" value="0.25" aria-label="Minimum certainty">
+            <span id="confv" class="mono" style="min-width:38px;text-align:right">25%</span>
+          </div>
+          <p class="hint" style="margin-top:4px">Only show cells the AI is at least this sure about.</p>
+        </details>
+      </section>
+
+      <section class="card pad" aria-label="Download">
+        <h2 class="label">Download</h2>
+        <div class="dl">
+          <button class="btn" id="dlimg"><svg><use href="#i-image"/></svg>Marked-up image (PNG)</button>
+          <button class="btn" id="csv"><svg><use href="#i-download"/></svg>Counts spreadsheet (CSV)</button>
+          <button class="btn ghost sm" id="json" style="justify-content:flex-start">Detailed cell positions (JSON)</button>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <section class="strip-wrap" aria-label="Your images">
+    <div class="strip-head">
+      <h2>Your images <span class="muted mono" id="imgCount" style="font-weight:500"></span></h2>
+      <button class="btn sm" id="addMore"><svg><use href="#i-upload"/></svg>Upload</button>
+      <button class="btn sm" id="linkToggle" aria-expanded="false"><svg><use href="#i-link"/></svg>From link</button>
+      <button class="btn sm" data-live-open><svg><use href="#i-camera"/></svg>Live camera</button>
+      <span class="spacer"></span>
+      <button class="btn ghost sm" id="clear">Remove all</button>
+    </div>
+    <div class="card" id="linkPop" hidden>
+      <form class="urlrow" data-url-form>
+        <input type="url" placeholder="Paste a link to an image, e.g. https://…/smear.jpg" aria-label="Image link" required>
+        <button class="btn primary" type="submit">Load</button>
+      </form>
+      <p class="field-error" data-url-err hidden></p>
+    </div>
+    <div class="strip" id="strip"></div>
+  </section>
+
+  <details class="card table-card" id="tableCard">
+    <summary><svg class="chev"><use href="#i-chev"/></svg>Counts for all images <span class="muted" id="tableSum" style="font-weight:500"></span></summary>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Image</th><th>Red cells</th><th>White cells</th><th>Platelets</th><th>Total</th></tr></thead>
+        <tbody id="tbody"></tbody>
+        <tfoot><tr><td>Total</td><td id="fr" class="mono">0</td><td id="fw" class="mono">0</td><td id="fp" class="mono">0</td><td id="ft" class="mono">0</td></tr></tfoot>
+      </table>
+    </div>
+  </details>
+</main>
+
+<!-- ================= LIVE CAMERA ================= -->
+<section id="live" hidden aria-label="Live camera">
+  <div class="live-bar">
+    <div class="live-title"><span class="live-badge" id="liveRec"><i></i><span id="liveBadgeText">LIVE</span></span><b>Live camera</b><span class="muted" id="liveFps" style="font-size:13px"></span></div>
+    <select class="cam" id="camSel" aria-label="Choose camera" hidden></select>
+    <div class="seg" role="group" aria-label="How to show cells">
+      <button data-view="boxes" aria-pressed="true">Boxes</button>
+      <button data-view="labels" aria-pressed="false">Labels</button>
+      <button data-view="none" aria-pressed="false">Original</button>
+    </div>
+    <button class="btn sm" id="livePause">Pause</button>
+    <button class="btn ghost sm" id="liveClose">Done</button>
+  </div>
+  <div class="live-grid">
+    <div class="live-stage" id="liveStage">
+      <canvas id="liveCanvas"></canvas>
+      <div class="vf" aria-hidden="true"></div>
+      <div class="hud" id="liveHud" aria-hidden="true"></div>
+      <video id="liveVideo" playsinline muted hidden></video>
+      <div class="overlay" id="liveOvl" hidden><div class="box" id="liveOvlBox"></div></div>
+    </div>
+    <aside class="live-side">
+      <section class="card pad" aria-label="Live count">
+        <h2 class="label">Cells in view</h2>
+        <p class="summary" id="liveSummary"></p>
+        <div class="cells" id="liveCells"></div>
+        <p class="hint" id="liveAvg"></p>
+      </section>
+      <section class="card pad">
+        <button class="btn primary lg" id="liveCapture" style="width:100%"><svg><use href="#i-camera"/></svg>Capture this view</button>
+        <p class="hint">Saves the current frame and its counts to <b>Your images</b>, where you can review and download them.
+          Shortcuts: <b>C</b> capture · <b>P</b> pause · <b>Esc</b> done.</p>
+      </section>
+      <section class="card pad" aria-label="Detection strictness">
+        <h2 class="label">How strict should counting be?</h2>
+        <div class="strict">
+          <button data-c="0.15">Relaxed</button>
+          <button data-c="0.25">Balanced</button>
+          <button data-c="0.5">Strict</button>
+        </div>
+      </section>
+      <section class="card pad">
+        <h2 class="label">Connecting your microscope</h2>
+        <ul class="tips">
+          <li><b>USB microscope camera:</b> plug it into this computer, then pick it from the camera menu at the top.</li>
+          <li><b>Phone on an eyepiece adapter:</b> use a webcam app (e.g. Continuity Camera on Mac, or a phone-as-webcam app) so it shows up as a camera.</li>
+          <li><b>Microscope with HDMI out:</b> connect it through a USB HDMI capture adapter.</li>
+          <li>Close the microscope's own software first, since only one app can use a camera at a time.</li>
+          <li>Focus sharply and keep the slide still for a second for the steadiest count.</li>
+        </ul>
+      </section>
+    </aside>
+  </div>
+</section>
+
+<footer>
+  For research and education only — not a medical diagnosis. The AI was trained on one public set of blood smear images,
+  so counts can be less accurate on photos from other microscopes, stains or zoom levels.
+</footer>
+
+<dialog id="help">
+  <div class="dh"><h2>How it works</h2><button class="btn ghost icon" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button></div>
+  <div class="db">
+    <h3>What it counts</h3>
+    <ul>
+      <li><b style="color:var(--rbc)">Red blood cells (RBC)</b>: carry oxygen; the most common cell in a smear.</li>
+      <li><b style="color:var(--wbc)">White blood cells (WBC)</b>: immune cells; larger, with a dark purple nucleus.</li>
+      <li><b style="color:var(--plt)">Platelets</b>: small fragments that help blood clot.</li>
+    </ul>
+    <h3>Strictness</h3>
+    <p>Each cell the AI finds comes with a certainty score. <b>Relaxed</b> counts more cells but may include a few mistakes,
+      <b>Strict</b> only counts cells it's very sure about, and <b>Balanced</b> is a good default. Changing it updates the counts instantly.</p>
+    <h3>Tips for better counts</h3>
+    <ul>
+      <li>Use a sharp, well-lit photo taken through the microscope.</li>
+      <li>Images similar to the samples (stained smear, cells clearly visible) work best.</li>
+      <li>Cells cut off at the edge of the image may be missed or counted twice in overlapping photos.</li>
+      <li>Hover a box to see its certainty; use zoom to check small platelets.</li>
+    </ul>
+    <h3>Live camera</h3>
+    <p>Press <b>Live camera</b> to count straight from a microscope camera (USB, HDMI capture adapter, or a phone on an eyepiece adapter).
+      The app counts several frames a second. <b>Pause</b> freezes a frame for a closer look, and <b>Capture</b> saves it to your images.</p>
+    <h3>Privacy</h3>
+    <p>Images you upload are analyzed on this computer and are not saved. Links are downloaded by this app from the website you give.</p>
+    <h3>About the model</h3>
+    <p id="modelInfo">YOLO26s detector fine-tuned on the TXL-PBC dataset. On held-out test images it found 95% of cells, and 97% of its detections were correct.</p>
+  </div>
+</dialog>
+
+<input id="fileMore" type="file" accept="image/*,.tif,.tiff,.heic" multiple hidden>
+<div id="dropOverlay" hidden><div>Drop images to count them</div></div>
+<div id="tip" hidden></div>
+<div id="toasts" aria-live="polite"></div>
+
+<script>
+const CELLS = [
+  { key: "RBC", name: "Red blood cells", short: "RBC", plural: "red cells", v: "--rbc" },
+  { key: "WBC", name: "White blood cells", short: "WBC", plural: "white cells", v: "--wbc" },
+  { key: "Platelets", name: "Platelets", short: "PLT", plural: "platelets", v: "--plt" },
+];
+const STRICT = { "0.15": "Relaxed", "0.25": "Balanced", "0.5": "Strict" };
+const ZOOMS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4];
+const $ = (id) => document.getElementById(id);
+const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+const state = { items: [], active: -1, hidden: new Set(), conf: 0.25, ready: false, hover: null, view: "boxes", zoom: "fit" };
+let uid = 0;
+
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const color = (k) => getComputedStyle(document.documentElement).getPropertyValue(CELLS.find((c) => c.key === k).v).trim();
+const visibleDets = (result) => (result?.detections || []).filter((d) => d.conf >= state.conf);
+const visible = (item) => visibleDets(item?.result);
+const countDets = (dets) => { const n = { WBC: 0, RBC: 0, Platelets: 0 }; dets.forEach((d) => n[d.cls]++); return n; };
+const countsOf = (item) => countDets(visible(item));
+
+// Colored boxes (and optional labels) for detections on a canvas of size W×H.
+function paintBoxes(c, W, H, dets, { labels = false, hover = null } = {}) {
+  const base = Math.min(W, H), lw = Math.max(1.5, base / 320), fs = Math.max(11, Math.round(base / 50));
+  c.font = `700 ${fs}px "Plus Jakarta Sans", -apple-system, "Segoe UI", sans-serif`; c.textBaseline = "top";
+  dets.forEach((d, idx) => {
+    if (state.hidden.has(d.cls)) return;
+    const [x1, y1, x2, y2] = d.box, x = x1 * W, y = y1 * H, w = (x2 - x1) * W, h = (y2 - y1) * H;
+    const col = color(d.cls), hov = hover === idx;
+    c.globalAlpha = hov ? 0.3 : 0.1; c.fillStyle = col; c.fillRect(x, y, w, h); c.globalAlpha = 1;
+    c.lineWidth = hov ? lw * 2.2 : lw; c.strokeStyle = col; c.strokeRect(x, y, w, h);
+    if (labels) {
+      const t = `${CELLS.find((k) => k.key === d.cls).short} ${Math.round(d.conf * 100)}%`;
+      const tw = c.measureText(t).width + 8, th = fs + 6, ty = y - th < 0 ? y : y - th;
+      c.fillStyle = col; c.fillRect(x, ty, tw, th); c.fillStyle = "#fff"; c.fillText(t, x + 4, ty + 3);
+    }
+  });
+}
+
+// The three count rows with show/hide toggles.
+function cellsHTML(n) {
+  return CELLS.map((c) => {
+    const off = state.hidden.has(c.key);
+    return `<div class="cell ${off ? "off" : ""}" style="--c:var(${c.v})">
+      <i class="sw" style="background:var(${c.v})"></i>
+      <span class="nm">${c.name}<small>${c.short}</small></span>
+      <span class="n mono">${n ? n[c.key].toLocaleString() : "–"}</span>
+      <button class="eye" data-k="${c.key}" aria-pressed="${!off}" title="${off ? "Show" : "Hide"} ${c.plural} on the image"
+        aria-label="${off ? "Show" : "Hide"} ${c.plural}">${icon(off ? "i-eye-off" : "i-eye")}</button></div>`;
+  }).join("");
+}
+const strictName = () => STRICT[String(state.conf)] || `custom (${Math.round(state.conf * 100)}%)`;
+const plural = (n, one, many) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
+const icon = (id) => `<svg><use href="#${id}"/></svg>`;
+const bigCount = (n) => `<span class="num">${n.toLocaleString()}</span> ${n === 1 ? "cell" : "cells"}`;
+
+function toast(msg, kind = "") {
+  const t = document.createElement("div"); t.className = `toast ${kind}`; t.textContent = msg;
+  $("toasts").append(t); setTimeout(() => t.remove(), kind === "err" ? 6000 : 3000);
+}
+
+// ---------- model status ----------
+function setStatus(kind, text, title = "") {
+  $("status").className = `chip ${kind}`; $("statusText").textContent = text; $("status").title = title;
+}
+async function checkInfo() {
+  try {
+    const r = await (await fetch("/api/info")).json();
+    if (r.ready) {
+      state.ready = true; state.modelTitle = `Model: ${r.model} · running on ${r.device.toUpperCase()}`;
+      setStatus("ok", "Ready", state.modelTitle);
+      render(); pump();
+    } else if (r.error) {
+      setStatus("err", "AI model not found", r.error);
+      toast(`The AI model couldn't load: ${r.error}`, "err");
+    } else setTimeout(checkInfo, 1000);
+  } catch { setStatus("err busy", "Can't reach the app server"); setTimeout(checkInfo, 2000); }
+}
+
+// ---------- samples ----------
+async function loadSamples() {
+  try {
+    const { samples } = await (await fetch("/api/samples")).json();
+    if (!samples.length) return;
+    $("samplesBlock").hidden = false;
+    $("samples").innerHTML = samples.slice(0, 6).map((s, i) => {
+      const src = `/api/samples/${encodeURIComponent(s)}`;
+      return `<div class="sample">
+        <button class="pick" data-name="${esc(s)}" aria-label="Analyze sample ${i + 1}"><img src="${src}" alt=""></button>
+        <span class="pick-label">Analyze sample ${i + 1}</span>
+        <a class="save" href="${src}" download="blood_smear_sample_${i + 1}.png" title="Save sample ${i + 1}" aria-label="Save sample ${i + 1} to your computer">${icon("i-download")}</a>
+      </div>`;
+    }).join("");
+    $("samples").onclick = async (e) => {
+      const b = e.target.closest("button.pick"); if (!b) return;
+      const blob = await (await fetch(`/api/samples/${encodeURIComponent(b.dataset.name)}`)).blob();
+      addFiles([new File([blob], `sample_${$$(".pick").indexOf(b) + 1}.png`, { type: blob.type })]);
+    };
+  } catch {}
+}
+
+// ---------- adding images ----------
+const isImage = (f) => f && (f.type.startsWith("image/") || /\.(tiff?|bmp|webp|heic|png|jpe?g)$/i.test(f.name));
+function addFiles(files) {
+  const list = [...files];
+  const imgs = list.filter(isImage);
+  if (list.length && !imgs.length) return toast("That file isn't an image. Please choose a PNG, JPEG, TIFF or similar.", "err");
+  if (!imgs.length) return;
+  const first = state.items.length;
+  imgs.forEach((f) => state.items.push({ id: ++uid, file: f, name: f.name || `pasted-image-${uid}.png`,
+    url: URL.createObjectURL(f), status: "queued", result: null, error: null, img: null }));
+  select(first);
+  pump();
+}
+$("file").onchange = $("fileMore").onchange = (e) => { addFiles(e.target.files); e.target.value = ""; };
+$("addMore").onclick = () => $("fileMore").click();
+$("linkToggle").onclick = () => {
+  const pop = $("linkPop"), open = pop.hidden;
+  pop.hidden = !open; $("linkToggle").setAttribute("aria-expanded", open);
+  if (open) pop.querySelector("input").focus();
+};
+
+async function addFromUrl(url, form) {
+  url = (url || "").trim(); if (!url) return;
+  const err = form?.parentElement.querySelector("[data-url-err]");
+  const btn = form?.querySelector("button");
+  if (err) err.hidden = true;
+  if (btn) { btn.disabled = true; btn.dataset.label = btn.innerHTML; btn.textContent = "Loading…"; }
+  try {
+    let blob, name;
+    if (url.startsWith("data:image/")) {
+      blob = await (await fetch(url)).blob(); name = `web-image-${uid + 1}.png`;
+    } else {
+      const res = await fetch("/api/fetch-image", { method: "POST",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) });
+      if (!res.ok) { let d; try { d = (await res.json()).detail; } catch {} throw new Error(d || res.statusText); }
+      blob = await res.blob(); name = res.headers.get("X-Filename") || "web-image.png";
+    }
+    addFiles([new File([blob], name, { type: blob.type || "image/png" })]);
+    if (form) form.querySelector("input").value = "";
+    $("linkPop").hidden = true; $("linkToggle").setAttribute("aria-expanded", "false");
+  } catch (e) {
+    const msg = `Couldn't load that link. ${e.message}`;
+    if (err) { err.textContent = msg; err.hidden = false; } else toast(msg, "err");
+  } finally { if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.label; } }
+}
+$$("[data-url-form]").forEach((f) => f.onsubmit = (e) => {
+  e.preventDefault(); addFromUrl(f.querySelector("input").value, f);
+});
+$("drop").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("file").click(); } });
+
+// drag & drop anywhere (files, or images dragged from another web page)
+function urlFromDrag(dt) {
+  const html = dt.getData("text/html");
+  if (html) { const img = new DOMParser().parseFromString(html, "text/html").querySelector("img[src]"); if (img) return img.getAttribute("src"); }
+  const list = (dt.getData("text/uri-list") || "").split(/\r?\n/).find((l) => l && !l.startsWith("#"));
+  return list || dt.getData("text/plain");
+}
+let dragDepth = 0;
+const isDragIn = (e) => [...(e.dataTransfer?.types || [])].some((t) => t === "Files" || t === "text/uri-list" || t === "text/html");
+document.addEventListener("dragenter", (e) => { if (!isDragIn(e)) return; e.preventDefault(); dragDepth++; $("dropOverlay").hidden = false; $("drop").classList.add("over"); });
+document.addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; $("dropOverlay").hidden = true; $("drop").classList.remove("over"); } });
+document.addEventListener("dragover", (e) => e.preventDefault());
+document.addEventListener("drop", (e) => {
+  e.preventDefault(); dragDepth = 0; $("dropOverlay").hidden = true; $("drop").classList.remove("over");
+  const dt = e.dataTransfer, files = [...(dt.files || [])];
+  if (files.length) return addFiles(files);
+  const u = urlFromDrag(dt);
+  if (u && /^(https?:|data:image\/)/i.test(u.trim())) addFromUrl(u);
+});
+document.addEventListener("paste", (e) => {
+  if (e.target.tagName === "INPUT") return;
+  const files = [...(e.clipboardData?.items || [])].filter((i) => i.kind === "file").map((i) => i.getAsFile());
+  if (files.length) return addFiles(files);
+  const text = (e.clipboardData?.getData("text") || "").trim();
+  if (/^(https?:\/\/|data:image\/)\S+$/i.test(text)) addFromUrl(text);
+});
+
+// ---------- analysis queue (one at a time) ----------
+let busy = false;
+async function pump() {
+  if (busy || !state.ready) return;
+  const item = state.items.find((i) => i.status === "queued");
+  if (!item) return;
+  busy = true; item.status = "running"; render();
+  try {
+    const fd = new FormData(); fd.append("file", item.file, item.name);
+    const res = await fetch("/api/predict", { method: "POST", body: fd });
+    let body; try { body = await res.json(); } catch { body = {}; }
+    if (!res.ok) throw new Error(body.detail || `Server error (${res.status})`);
+    item.result = body; item.status = "done";
+  } catch (err) { item.status = "error"; item.error = err.message === "Failed to fetch" ? "Lost connection to the app server." : err.message; }
+  busy = false; render(); pump();
+}
+
+// ---------- selection & viewer ----------
+const canvas = $("canvas");
+function select(i) {
+  state.active = i; state.hover = null;
+  const item = state.items[i];
+  if (item && !item.img && !item.imgFailed) {
+    const im = new Image();
+    im.onload = () => { item.img = im; if (state.items[state.active] === item) render(); };
+    im.onerror = () => { item.imgFailed = true; if (state.items[state.active] === item) render(); };
+    im.src = item.url;
+  }
+  render();
+  // keep the selected thumbnail visible by scrolling the strip sideways only (never the page)
+  const strip = $("strip"), t = strip.querySelector(".thumb.active");
+  if (t) {
+    const l = t.offsetLeft - strip.offsetLeft, r = l + t.offsetWidth;
+    if (l < strip.scrollLeft) strip.scrollLeft = l - 8;
+    else if (r > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = r - strip.clientWidth + 8;
+  }
+}
+
+function draw(target = canvas, forExport = false) {
+  const item = state.items[state.active];
+  if (!item?.img) { if (!forExport) canvas.hidden = true; return; }
+  const im = item.img, c = target.getContext("2d");
+  target.width = im.naturalWidth; target.height = im.naturalHeight;
+  if (!forExport) {
+    canvas.hidden = false;
+    if (state.zoom === "fit") { canvas.style.width = ""; $("stage").classList.remove("zoomed"); }
+    else { canvas.style.width = `${im.naturalWidth * state.zoom}px`; $("stage").classList.add("zoomed"); }
+  }
+  c.drawImage(im, 0, 0);
+  if (state.view === "none" && !forExport) return;
+  paintBoxes(c, target.width, target.height, visible(item),
+    { labels: state.view === "labels", hover: forExport ? null : state.hover });
+}
+
+function hitTest(e) {
+  const item = state.items[state.active]; if (!item?.result || state.view === "none") return null;
+  const r = canvas.getBoundingClientRect();
+  const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+  let best = null, area = Infinity;
+  visible(item).forEach((d, idx) => {
+    if (state.hidden.has(d.cls)) return;
+    const [x1, y1, x2, y2] = d.box;
+    if (px >= x1 && px <= x2 && py >= y1 && py <= y2) { const a = (x2 - x1) * (y2 - y1); if (a < area) { area = a; best = { idx, d }; } }
+  });
+  return best;
+}
+canvas.addEventListener("mousemove", (e) => {
+  const hit = hitTest(e), tip = $("tip"), idx = hit ? hit.idx : null;
+  if (idx !== state.hover) { state.hover = idx; draw(); }
+  if (!hit) return void (tip.hidden = true);
+  const cell = CELLS.find((k) => k.key === hit.d.cls);
+  tip.textContent = `${cell.name.replace(/s$/, "")} · ${Math.round(hit.d.conf * 100)}% sure`;
+  tip.hidden = false;
+  tip.style.left = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8) + "px";
+  tip.style.top = (e.clientY + 16) + "px";
+});
+canvas.addEventListener("mouseleave", () => { $("tip").hidden = true; if (state.hover !== null) { state.hover = null; draw(); } });
+
+// zoom
+function currentScale() {
+  const item = state.items[state.active]; if (!item?.img) return 1;
+  return state.zoom === "fit" ? canvas.getBoundingClientRect().width / item.img.naturalWidth : state.zoom;
+}
+function setZoom(z) { state.zoom = z; draw(); renderZoom(); }
+$("zIn").onclick = () => { const s = currentScale(); setZoom(ZOOMS.find((z) => z > s + 0.01) || ZOOMS.at(-1)); };
+$("zOut").onclick = () => { const s = currentScale(); setZoom([...ZOOMS].reverse().find((z) => z < s - 0.01) || ZOOMS[0]); };
+$("zFit").onclick = () => setZoom("fit");
+function renderZoom() { $("zFit").textContent = state.zoom === "fit" ? "Fit" : `${Math.round(state.zoom * 100)}%`; }
+
+// ---------- rendering ----------
+function render() {
+  const items = state.items, item = items[state.active];
+  const entering = items.length > 0 && $("workspace").hidden;
+  $("welcome").hidden = items.length > 0; $("workspace").hidden = items.length === 0;
+  if (entering) scrollTo({ top: 0, behavior: "instant" });
+  // controls shared by the photo view and the live view
+  $$(".seg button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.view === state.view));
+  $$(".strict button").forEach((b) => b.setAttribute("aria-pressed", +b.dataset.c === state.conf));
+  renderLive();
+  if (!items.length) return;
+
+  // header status reflects work in progress
+  if (state.ready) {
+    const pending = items.filter((i) => i.status === "queued" || i.status === "running").length;
+    pending ? setStatus("ok busy", `Counting… ${pending} left`, state.modelTitle) : setStatus("ok", "Ready", state.modelTitle);
+  }
+
+  // viewer title + overlay
+  $("vName").textContent = item?.name || "";
+  $("vSub").textContent = item?.result ? `${item.result.width} × ${item.result.height} px · analyzed in ${(item.result.inference_ms / 1000).toFixed(2)} s` : "";
+  const ovl = $("ovl"), box = $("ovlBox");
+  if (!item) { ovl.hidden = true; }
+  else if (item.status === "error") {
+    ovl.hidden = false;
+    box.innerHTML = `<h3>Couldn't analyze this image</h3><p>${esc(item.error)}</p>
+      <button class="btn primary" id="retry">Try again</button> <button class="btn" id="rmBad">Remove it</button>`;
+    $("retry").onclick = () => { item.status = "queued"; item.error = null; render(); pump(); };
+    $("rmBad").onclick = () => removeItem(state.active);
+  } else if (item.status !== "done") {
+    ovl.hidden = false;
+    box.innerHTML = `<div class="spinner"></div><h3>${!state.ready ? "Starting the AI…" : item.status === "running" ? "Counting cells…" : "Waiting in line…"}</h3>
+      <p>${!state.ready ? "This takes a few seconds the first time." : "This usually takes under a second."}</p>`;
+  } else if (item.imgFailed) {
+    ovl.hidden = false;
+    box.innerHTML = `<h3>Preview not available</h3><p>Your browser can't display this file type, but the counts on the right are complete.</p>`;
+  } else ovl.hidden = true;
+  renderZoom();
+
+  // results
+  const done = item?.status === "done", n = done ? countsOf(item) : null, vis = done ? visible(item) : [];
+  const total = vis.length;
+  $("summary").innerHTML = !done ? `<span class="muted">${item?.status === "error" ? "No results for this image." : "Results will appear here."}</span>`
+    : total ? `<strong>${bigCount(total)}</strong><span class="muted">found at ${strictName()} strictness</span>`
+    : `<strong>No cells found</strong><span class="muted">Try <b>Relaxed</b> strictness, or check that this is a blood smear image.</span>`;
+  $("cells").innerHTML = cellsHTML(n);
+  const facts = [];
+  if (n && n.RBC) {
+    if (n.WBC) facts.push(["White : red cells", `1 : ${Math.round(n.RBC / n.WBC).toLocaleString()}`]);
+    facts.push(["Platelets per 100 red cells", (n.Platelets / n.RBC * 100).toFixed(1)]);
+  }
+  if (total) facts.push(["Average certainty", `${Math.round(vis.reduce((s, d) => s + d.conf, 0) / total * 100)}%`]);
+  $("facts").innerHTML = facts.map(([k, v]) => `<div><dt>${k}</dt><dd class="mono">${v}</dd></div>`).join("");
+
+  // strictness
+  $("conf").value = state.conf; $("confv").textContent = `${Math.round(state.conf * 100)}%`;
+  $("strictHint").textContent = {
+    0.15: "Counts more cells, including ones the AI is less sure about. May include a few mistakes.",
+    0.25: "A good default. Counts cells the AI is reasonably sure about.",
+    0.5: "Only counts cells the AI is very sure about. May miss faint or partly hidden cells.",
+  }[state.conf] || `Counting cells the AI is at least ${Math.round(state.conf * 100)}% sure about.`;
+
+  // downloads
+  const anyDone = items.some((i) => i.status === "done");
+  $("dlimg").disabled = !(done && item.img); $("csv").disabled = $("json").disabled = !anyDone;
+
+  // strip
+  $("imgCount").textContent = `(${items.length})`;
+  $("strip").innerHTML = items.map((it, i) => {
+    const st = it.status === "done" ? `${plural(visible(it).length, "cell", "cells")}`
+      : it.status === "error" ? "Failed" : it.status === "running" ? `<span class="mini-spin"></span>Counting` : "Waiting";
+    return `<div class="thumb ${i === state.active ? "active" : ""}" role="button" tabindex="0" data-i="${i}"
+        aria-label="${esc(it.name)}, ${it.status === "done" ? visible(it).length + " cells" : it.status}" aria-current="${i === state.active}">
+      ${it.imgFailed ? `<div class="ph"></div>` : `<img src="${it.url}" alt="">`}
+      <div class="meta"><span class="t" title="${esc(it.name)}">${esc(it.name)}</span><span class="s ${it.status === "error" ? "err" : ""}">${st}</span></div>
+      <button class="rm" data-rm="${i}" title="Remove" aria-label="Remove ${esc(it.name)}">${icon("i-x")}</button></div>`;
+  }).join("") + `<button class="thumb add" id="addTile">${icon("i-plus")}Add images</button>`;
+  $("addTile").onclick = () => $("fileMore").click();
+
+  // table
+  const doneItems = items.filter((i) => i.status === "done");
+  const tot = { WBC: 0, RBC: 0, Platelets: 0 };
+  $("tbody").innerHTML = doneItems.map((it) => {
+    const c = countsOf(it); CELLS.forEach((k) => tot[k.key] += c[k.key]);
+    return `<tr data-i="${items.indexOf(it)}"><td title="${esc(it.name)}">${esc(it.name)}</td><td class="mono">${c.RBC}</td><td class="mono">${c.WBC}</td>
+      <td class="mono">${c.Platelets}</td><td class="mono">${c.WBC + c.RBC + c.Platelets}</td></tr>`;
+  }).join("");
+  $("fr").textContent = tot.RBC; $("fw").textContent = tot.WBC; $("fp").textContent = tot.Platelets;
+  $("ft").textContent = tot.WBC + tot.RBC + tot.Platelets;
+  $("tableSum").textContent = `· ${plural(doneItems.length, "image", "images")}`;
+  $("tableCard").hidden = doneItems.length < 1;
+
+  draw();
+}
+
+function removeItem(i) {
+  const [it] = state.items.splice(i, 1); if (it) URL.revokeObjectURL(it.url);
+  if (state.active >= state.items.length) state.active = state.items.length - 1;
+  else if (i < state.active) state.active--;
+  state.zoom = "fit"; render();
+}
+
+// ---------- events ----------
+$("strip").addEventListener("click", (e) => {
+  const rm = e.target.closest("[data-rm]"); if (rm) { e.stopPropagation(); return removeItem(+rm.dataset.rm); }
+  const t = e.target.closest(".thumb[data-i]"); if (t) { state.zoom = "fit"; select(+t.dataset.i); }
+});
+$("strip").addEventListener("keydown", (e) => {
+  const t = e.target.closest(".thumb[data-i]"); if (!t) return;
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(+t.dataset.i); }
+  if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); removeItem(+t.dataset.i); }
+});
+$("tbody").onclick = (e) => { const tr = e.target.closest("tr"); if (tr) { select(+tr.dataset.i); scrollTo({ top: 0 }); } };
+[$("cells"), $("liveCells")].forEach((el) => el.onclick = (e) => {
+  const b = e.target.closest(".eye"); if (!b) return;
+  const k = b.dataset.k; state.hidden.has(k) ? state.hidden.delete(k) : state.hidden.add(k); render();
+});
+$$(".seg button").forEach((b) => b.onclick = () => { state.view = b.dataset.view; render(); });
+$$(".strict").forEach((el) => el.onclick = (e) => { const b = e.target.closest("button"); if (b) { state.conf = +b.dataset.c; render(); } });
+$("conf").oninput = (e) => { state.conf = Math.round(+e.target.value * 100) / 100; render(); };
+$("clear").onclick = () => {
+  if (state.items.length > 1 && !confirm(`Remove all ${state.items.length} images?`)) return;
+  state.items.forEach((i) => URL.revokeObjectURL(i.url)); state.items = []; state.active = -1; render();
+};
+$("home").onclick = () => { if (state.items.length) $("clear").click(); else scrollTo({ top: 0 }); };
+$("helpBtn").onclick = () => $("help").showModal();
+$("help").addEventListener("click", (e) => { if (e.target === $("help") || e.target.closest("[data-close]")) $("help").close(); });
+document.addEventListener("keydown", (e) => {
+  if (!$("live").hidden || e.target.closest("input, select, textarea, dialog") || !state.items.length) return;
+  if (e.key === "ArrowRight") select(Math.min(state.items.length - 1, state.active + 1));
+  if (e.key === "ArrowLeft") select(Math.max(0, state.active - 1));
+  if (e.key === "+" || e.key === "=") $("zIn").click();
+  if (e.key === "-") $("zOut").click();
+  if (e.key === "0") $("zFit").click();
+});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => draw());
+addEventListener("resize", () => { if (state.zoom === "fit") renderZoom(); });
+
+// ---------- live camera ----------
+// Frames are grabbed from the camera, downscaled, and sent to the same /api/predict endpoint one at a time
+// (a new frame is sent as soon as the previous answer arrives, capped at ~10/s). Boxes from the latest answer
+// are drawn over the live video.
+const live = { running: false, paused: false, stream: null, inflight: false, last: null, hist: [], stamps: [],
+  raf: 0, lastSend: 0, aiWait: false, errShown: false };
+const LIVE_MAX_SIDE = 960, LIVE_MIN_INTERVAL = 100, LIVE_HIST = 10, CAM_KEY = "bcc.camera";
+const savedCam = () => { try { return localStorage.getItem(CAM_KEY); } catch { return null; } };
+const saveCam = (id) => { try { if (id) localStorage.setItem(CAM_KEY, id); } catch {} };
+const spin = (title, text) => `<div class="spinner"></div><h3>${title}</h3><p>${text}</p>`;
+
+function liveMsg(html) {
+  if (html == null) { $("liveOvl").hidden = true; return; }
+  $("liveOvlBox").innerHTML = html; $("liveOvl").hidden = false;
+}
+
+async function openLive() {
+  $("live").hidden = false; document.body.style.overflow = "hidden";
+  Object.assign(live, { running: true, paused: false, last: null, hist: [], stamps: [], errShown: false });
+  renderLive();
+  if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+    return liveMsg(`<h3>Camera not available on this address</h3><p>Browsers only allow camera access on secure pages.
+      Open the app at <b>http://localhost:8001</b> on the computer the microscope is plugged into.</p>`);
+  }
+  liveMsg(spin("Starting camera…", "If your browser asks, choose <b>Allow</b> so the app can use the camera."));
+  cancelAnimationFrame(live.raf); live.raf = requestAnimationFrame(liveFrame);
+  await startStream(savedCam());
+}
+
+function stopStream() {
+  live.stream?.getTracks().forEach((t) => t.stop());
+  live.stream = null; $("liveVideo").srcObject = null;
+}
+
+async function startStream(deviceId) {
+  stopStream(); live.last = null; live.hist = []; live.stamps = []; renderLive();
+  const video = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+  if (deviceId) video.deviceId = { exact: deviceId };
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({ video, audio: false });
+    if (!live.running) { s.getTracks().forEach((t) => t.stop()); return; }
+    live.stream = s;
+    const v = $("liveVideo"); v.srcObject = s; await v.play();
+    const track = s.getVideoTracks()[0], id = track?.getSettings().deviceId;
+    saveCam(id); await listCams(id);
+    track.onended = () => live.running && liveMsg(`<h3>Camera disconnected</h3>
+      <p>Plug it back in or pick another camera from the menu.</p><button class="btn primary" data-retry>Try again</button>`);
+    live.aiWait = !state.ready;
+    liveMsg(live.aiWait ? spin("Starting the AI…", "Live counting begins in a moment.") : null);
+  } catch (e) {
+    if (deviceId && (e.name === "OverconstrainedError" || e.name === "NotFoundError")) return startStream(null); // saved camera gone
+    const [title, text] = {
+      NotAllowedError: ["Camera access was blocked", "Click the camera icon in your browser's address bar, choose Allow, then press Try again. On a Mac, also check System Settings → Privacy & Security → Camera."],
+      NotFoundError: ["No camera found", "Connect your microscope camera (USB) or another camera, then press Try again."],
+      NotReadableError: ["The camera is busy", "Another app (Zoom, FaceTime, the microscope's own software…) may be using it. Close that app, then press Try again."],
+    }[e.name] || ["Couldn't start the camera", e.message || String(e)];
+    liveMsg(`<h3>${title}</h3><p>${esc(text)}</p><button class="btn primary" data-retry>Try again</button>`);
+  }
+}
+$("liveOvl").addEventListener("click", (e) => {
+  if (!e.target.closest("[data-retry]")) return;
+  liveMsg(spin("Starting camera…", "One moment…")); startStream($("camSel").value || savedCam());
+});
+
+async function listCams(currentId) {
+  const cams = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput");
+  const sel = $("camSel");
+  sel.innerHTML = cams.map((d, i) => `<option value="${esc(d.deviceId)}">${esc(d.label || `Camera ${i + 1}`)}</option>`).join("");
+  if (currentId) sel.value = currentId;
+  sel.hidden = cams.length === 0;
+}
+$("camSel").onchange = (e) => { liveMsg(spin("Switching camera…", "One moment…")); startStream(e.target.value); };
+navigator.mediaDevices?.addEventListener?.("devicechange", () => { if (live.running && live.stream) listCams($("camSel").value); });
+
+function closeLive() {
+  live.running = false; cancelAnimationFrame(live.raf); stopStream();
+  $("live").hidden = true; document.body.style.overflow = ""; render();
+}
+
+function liveFrame() {
+  if (!live.running) return;
+  const v = $("liveVideo"), cv = $("liveCanvas"), c = cv.getContext("2d");
+  const src = live.paused ? live.last?.frame : (v.readyState >= 2 && v.videoWidth ? v : null);
+  if (src) {
+    const w = src.videoWidth || src.width, h = src.videoHeight || src.height;
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    c.drawImage(src, 0, 0, w, h);
+    if (live.last && state.view !== "none") paintBoxes(c, w, h, visibleDets(live.last.result), { labels: state.view === "labels" });
+  }
+  if (live.aiWait && state.ready) { live.aiWait = false; liveMsg(null); }
+  tick();
+  live.raf = requestAnimationFrame(liveFrame);
+}
+
+async function tick() {
+  const v = $("liveVideo"), now = performance.now();
+  if (live.paused || live.inflight || !state.ready || !live.stream || document.hidden || v.readyState < 2 || !v.videoWidth) return;
+  if (now - live.lastSend < LIVE_MIN_INTERVAL) return;
+  live.inflight = true; live.lastSend = now;
+  const s = Math.min(1, LIVE_MAX_SIDE / Math.max(v.videoWidth, v.videoHeight));
+  const frame = document.createElement("canvas");
+  frame.width = Math.round(v.videoWidth * s); frame.height = Math.round(v.videoHeight * s);
+  frame.getContext("2d").drawImage(v, 0, 0, frame.width, frame.height);
+  try {
+    const blob = await new Promise((r) => frame.toBlob(r, "image/jpeg", 0.88));
+    const fd = new FormData(); fd.append("file", blob, "live-frame.jpg");
+    const res = await fetch("/api/predict", { method: "POST", body: fd });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || `Server error (${res.status})`);
+    const result = await res.json();
+    if (!live.running || live.paused) return;          // finished after pause/close: drop it
+    live.last = { frame, result };
+    live.hist.push(result.detections); if (live.hist.length > LIVE_HIST) live.hist.shift();
+    live.stamps.push(performance.now()); if (live.stamps.length > 10) live.stamps.shift();
+    live.errShown = false; renderLive();
+  } catch (e) {
+    if (!live.errShown) { toast(`Live counting hiccup: ${e.message === "Failed to fetch" ? "lost connection to the app server" : e.message}`, "err"); live.errShown = true; }
+    live.lastSend = performance.now() + 1000;           // back off a second before retrying
+  } finally { live.inflight = false; }
+}
+
+function renderLive() {
+  if ($("live").hidden) return;
+  const r = live.last?.result, dets = r ? visibleDets(r) : [], n = r ? countDets(dets) : null;
+  $("liveSummary").innerHTML = r
+    ? `<strong>${bigCount(dets.length)}</strong><span class="muted">${live.paused ? "in this frozen frame" : "in view right now"}</span>`
+    : `<span class="muted">Counts appear here once the camera is running.</span>`;
+  $("liveCells").innerHTML = cellsHTML(n);
+  if (live.hist.length >= 3 && !live.paused) {
+    const avg = { RBC: 0, WBC: 0, Platelets: 0 };
+    live.hist.forEach((h) => { const c = countDets(h.filter((d) => d.conf >= state.conf)); for (const k in avg) avg[k] += c[k] / live.hist.length; });
+    $("liveAvg").textContent = `Steady average (last ${live.hist.length} frames): ${Math.round(avg.RBC)} red · ${Math.round(avg.WBC)} white · ${Math.round(avg.Platelets)} platelets`;
+  } else $("liveAvg").textContent = live.paused ? "Paused: the frame and boxes are frozen so you can inspect or capture them." : "";
+  const fps = live.stamps.length > 1 ? (live.stamps.length - 1) / ((live.stamps.at(-1) - live.stamps[0]) / 1000) : 0;
+  $("liveFps").textContent = live.paused ? "Paused" : fps ? `${fps.toFixed(1)} counts / sec` : "";
+  $("liveRec").classList.toggle("paused", live.paused || !live.stream);
+  $("liveBadgeText").textContent = live.paused ? "PAUSED" : "LIVE";
+  $("liveHud").innerHTML = n ? CELLS.filter((c) => !state.hidden.has(c.key)).map((c) =>
+    `<span class="hchip" style="--c:var(${c.v})"><i></i>${c.short} <b>${n[c.key]}</b></span>`).join("") : "";
+  $("livePause").textContent = live.paused ? "Resume" : "Pause";
+  $("livePause").disabled = !live.last && !live.paused;
+  $("liveCapture").disabled = !r;
+}
+
+$$("[data-live-open]").forEach((b) => b.onclick = openLive);
+$("liveClose").onclick = closeLive;
+$("livePause").onclick = () => { live.paused = !live.paused; if (!live.paused) { live.stamps = []; live.hist = []; } renderLive(); };
+$("liveCapture").onclick = () => {
+  const L = live.last; if (!L) return;
+  const name = `live_capture_${new Date().toTimeString().slice(0, 8).replace(/:/g, "")}.png`;
+  L.frame.toBlob((blob) => {
+    const f = new File([blob], name, { type: "image/png" });
+    state.items.push({ id: ++uid, file: f, name, url: URL.createObjectURL(f), status: "done", result: L.result, error: null, img: null });
+    select(state.items.length - 1);
+    const st = $("liveStage"); st.classList.remove("flash"); void st.offsetWidth; st.classList.add("flash");
+    toast(`Captured ${plural(visibleDets(L.result).length, "cell", "cells")} · saved to Your images`);
+  }, "image/png");
+};
+document.addEventListener("keydown", (e) => {
+  if ($("live").hidden || e.target.closest("input, select, textarea, dialog")) return;
+  if (e.key === "Escape") closeLive();
+  else if (e.key === "c" || e.key === "C") $("liveCapture").click();
+  else if (e.key === "p" || e.key === "P") $("livePause").click();
+});
+addEventListener("pagehide", stopStream);
+
+// ---------- downloads ----------
+function download(name, blob) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+const stem = (n) => n.replace(/\.[^.]+$/, "");
+$("csv").onclick = () => {
+  const rows = [["image", "red_blood_cells", "white_blood_cells", "platelets", "total", "strictness", "min_certainty"]];
+  state.items.filter((i) => i.status === "done").forEach((it) => {
+    const c = countsOf(it); rows.push([it.name, c.RBC, c.WBC, c.Platelets, c.WBC + c.RBC + c.Platelets, strictName(), state.conf]);
+  });
+  const csv = rows.map((r) => r.map((v) => /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v).join(",")).join("\n");
+  download("blood_cell_counts.csv", new Blob([csv], { type: "text/csv" }));
+  toast("Counts spreadsheet downloaded");
+};
+$("json").onclick = () => {
+  const out = state.items.filter((i) => i.status === "done").map((it) => ({
+    image: it.name, width: it.result.width, height: it.result.height, min_certainty: state.conf, counts: countsOf(it),
+    cells: visible(it).map((d) => ({ type: d.cls, certainty: d.conf,
+      box_px: { x1: d.box[0] * it.result.width, y1: d.box[1] * it.result.height, x2: d.box[2] * it.result.width, y2: d.box[3] * it.result.height } })),
+  }));
+  download("blood_cell_detections.json", new Blob([JSON.stringify(out, null, 2)], { type: "application/json" }));
+};
+$("dlimg").onclick = () => {
+  const item = state.items[state.active]; if (!item?.img) return;
+  const prev = state.view; if (state.view === "none") state.view = "boxes";
+  const off = document.createElement("canvas"); draw(off, true); state.view = prev;
+  off.toBlob((b) => { download(`${stem(item.name)}_marked.png`, b); toast("Marked-up image downloaded"); }, "image/png");
+};
+
+render(); checkInfo(); loadSamples();
+document.fonts?.ready.then(() => draw());   // redraw box labels once the web font has loaded
+</script>
+</body>
+</html>
